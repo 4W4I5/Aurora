@@ -45,15 +45,15 @@ const LoginPage = ({ role }) => {
       password: password,
     };
 
-    if (email) {
-      const domain = email.split("@")[1];
-      if (domain !== "admin.com" && domain !== "user.com") {
-        alert(
-          "Invalid email domain, please use either @admin.com or @user.com"
-        );
-        return;
-      }
-    }
+    // if (email) {
+    //   const domain = email.split("@")[1];
+    //   if (domain !== "admin.com" && domain !== "user.com") {
+    //     alert(
+    //       "Invalid email domain, please use either @admin.com or @user.com"
+    //     );
+    //     return;
+    //   }
+    // }
 
     const response = await fetch(URL, {
       method: "POST",
@@ -214,7 +214,7 @@ const LoginPage = ({ role }) => {
         >
           {step === 1 ? (
             <>
-              <form onSubmit={handleNextStep}>
+              <form onSubmit={handleLogin}>
                 <div className="mb-4">
                   <input
                     type="email"
@@ -236,18 +236,18 @@ const LoginPage = ({ role }) => {
                   />
                 </div>
                 <button
-                  onClick={() => handleNextStep()}
+                  type="submit"
                   className="btn w-full bg-supabase.primary hover:bg-supabase.secondary text-supabase-neutral rounded-2xl"
                 >
                   Sign In
                 </button>
-                <button
-                  onClick={() => setStep(2)}
-                  className="btn w-full bg-supabase.secondary hover:bg-supabase.primary text-supabase-neutral rounded-2xl mt-4"
-                >
-                  Login with Blockchain
-                </button>
               </form>
+              <button
+                onClick={() => handleNextStep()}
+                className="btn w-full bg-supabase.secondary hover:bg-supabase.primary text-supabase-neutral rounded-2xl mt-4"
+              >
+                Login with Blockchain
+              </button>
             </>
           ) : (
             <>

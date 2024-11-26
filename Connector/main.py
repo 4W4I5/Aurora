@@ -171,16 +171,16 @@ async def verify_password(request: Request):
     """
 
     body = await request.json()
-    username = body.get("username")
+    email = body.get("email")
     password = body.get("password")
 
-    if not username or not password:
-        return {"authenticated": False, "error": "Missing username or password."}
+    if not email or not password:
+        return {"authenticated": False, "error": "Missing email or password in BODY"}
     # password_hash = (bcrypt.hashpw(password=password, salt=bcrypt.gensalt(rounds=10)))
     # print(f"Password Hash: {password_hash}")
 
     with Session(engine) as session:
-        statement = select(User).where(User.username == username)
+        statement = select(User).where(User.email == email)
         user = session.exec(statement).first()
 
     if not user:

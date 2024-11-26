@@ -17,10 +17,10 @@ const AdminProfile = () => {
   const [errors, setErrors] = useState({});
 
   const [profile, setProfile] = useState({
-    firstName: "Abdullah",
-    lastName: "Abubaker",
-    email: "abdullah.abubaker@Aurora.com",
-    phone: "+92-300-456-8910",
+    firstName: "Test",
+    lastName: "User",
+    email: "Test.User@Aurora.com",
+    phone: "+92-333-333-3333",
     passwordSet: true,
     twoFactorAuth: false,
   });
