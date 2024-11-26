@@ -45,15 +45,15 @@ const LoginPage = ({ role }) => {
       password: password,
     };
 
-    // if (email) {
-    //   const domain = email.split("@")[1];
-    //   if (domain !== "admin.com" && domain !== "user.com") {
-    //     alert(
-    //       "Invalid email domain, please use either @admin.com or @user.com"
-    //     );
-    //     return;
-    //   }
-    // }
+    if (email) {
+      const domain = email.split("@")[1];
+      if (domain !== "admin.com" && domain !== "user.com") {
+        alert(
+          "Invalid email domain, please use either @admin.com or @user.com"
+        );
+        return;
+      }
+    }
 
     const response = await fetch(URL, {
       method: "POST",

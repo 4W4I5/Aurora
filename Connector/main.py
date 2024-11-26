@@ -188,10 +188,18 @@ async def verify_password(request: Request):
 
     if user.password_hash != password:
         return {"authenticated": False, "error": "Invalid password."}
+    
+    # Grab the role from the email domain, removing the .com
+    role = email.split("@")[1].split(".")[0]
+
+    # Ensure the role is either admin or user
+    if role not in ["admin", "user"]:
+        role = "user"
+        print("Invalid role, defaulting to 'user'.")
 
     return {
         "authenticated": True,
-        "role": "user",
+        "role": role,
     }
 
 
