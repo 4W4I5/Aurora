@@ -1,55 +1,28 @@
-import {
-  Check,
-  Edit,
-  KeyRound,
-  Loader2,
-  SquareUserRound,
-  X,
-} from "lucide-react";
+import { Check, Edit, Loader2, SquareUserRound, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import sampleQR from "../../assets/sample-QR.png";
 import Sidebar from "../../components/Sidebar";
 
 const UserProfile = () => {
-  const verifyJWT = async (e) => {
-    // JWT token verification
-    const token = localStorage.getItem("access_token");
-    console.log(token);
-
-    try {
-      const response = await fetch("http://127.0.0.1:8000/verify-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to verify token");
-      }
-    } catch (error) {
-      console.error("Error verifying token:", error);
-      localStorage.removeItem("token");
-      // Redirect to login page or show a message to the user
-      navigate("/");
-    }
-  };
-
-  useEffect(() => {
-    verifyJWT();
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAuth, setEditingAuth] = useState(false);
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
+  // Initializing profile state as empty, it will be populated by fetched data
   const [profile, setProfile] = useState({
-    firstName: "Test",
-    lastName: "User",
-    email: "Test.User@Aurora.com",
-    phone: "+92-333-333-3333",
-    passwordSet: true,
-    twoFactorAuth: false,
+    username: "",
+    email: "",
+    phone: "",
+    publickey: "",
+    privatekey: "",
+    blockchain_address: "",
+    role: "",
+    did: "",
+    isPWLess: false,
+    isOnline: false,
   });
 
   const [editForm, setEditForm] = useState({ ...profile });
@@ -58,6 +31,70 @@ const UserProfile = () => {
     confirmPassword: "",
     twoFactorAuth: profile.twoFactorAuth,
   });
+
+  // Fetch user data from FastAPI's /api/users/me route
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsLoading(true);
+
+      // JWT token verification
+      const token = localStorage.getItem("access_token");
+      console.log(token);
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to verify token");
+        }
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        localStorage.removeItem("token");
+        // Redirect to login page or show a message to the user
+        navigate("/");
+      }
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/api/profile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const data = await response.json();
+        console.log(data);
+        setProfile({
+          username: data.username,
+          email: data.email,
+          phone: data.phone,
+          publickey: data.public_key,
+          privatekey: data.private_key,
+          blockchain_address: data.blockchain_address,
+          role: data.role,
+          did: data.did,
+          isPWLess: data.isPWLess,
+          isOnline: data.isOnline,
+        });
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []); // Empty dependency array ensures this runs only once when the component mounts
 
   // Validation functions
   const validatePersonal = () => {
@@ -205,54 +242,25 @@ const UserProfile = () => {
             </div>
             <div className="mt-6">
               <div className="grid grid-cols-3 gap-y-4 items-center">
-                {/* First Name */}
-                <p className="font-semibold">First name:</p>
+                {/* Name */}
+                <p className="font-semibold">Username:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editForm.firstName}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            firstName: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.firstName && (
-                        <p className="text-red-500 text-sm">
-                          {errors.firstName}
-                        </p>
-                      )}
-                    </>
+                    <input
+                      type="text"
+                      value={editForm.username}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          username: e.target.value,
+                        })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.firstName}</p>
-                  )}
-                </div>
-
-                {/* Last Name */}
-                <p className="font-semibold">Last name:</p>
-                <div className="col-span-2">
-                  {editingPersonal ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editForm.lastName}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, lastName: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.lastName && (
-                        <p className="text-red-500 text-sm">
-                          {errors.lastName}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p>{profile.lastName}</p>
+                    <p className="break-words">
+                      {profile.username || "Not provided"}
+                    </p>
                   )}
                 </div>
 
@@ -260,166 +268,80 @@ const UserProfile = () => {
                 <p className="font-semibold">Email:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, email: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.email && (
-                        <p className="text-red-500 text-sm">{errors.email}</p>
-                      )}
-                    </>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, email: e.target.value })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.email}</p>
+                    <p className="break-words">{profile.email}</p>
                   )}
                 </div>
 
-                {/* Phone Number */}
-                <p className="font-semibold">Phone No.:</p>
+                {/* Phone */}
+                <p className="font-semibold">Phone:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="tel"
-                        value={editForm.phone}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, phone: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm">{errors.phone}</p>
-                      )}
-                    </>
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, phone: e.target.value })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.phone}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Authentication Card */}
-          <div className="bg-supabase-base-100 rounded-2xl shadow-md p-6 relative">
-            <div className="absolute top-4 right-4">
-              {editingAuth ? (
-                <div className="space-x-2">
-                  <button
-                    className="btn bg-gray-500 hover:bg-gray-600 text-supabase-base-100 p-2 rounded-2xl px-4"
-                    onClick={() => {
-                      setEditingAuth(false);
-                      setAuthForm({
-                        newPassword: "",
-                        confirmPassword: "",
-                        twoFactorAuth: profile.twoFactorAuth,
-                      });
-                      setErrors({});
-                    }}
-                    disabled={isLoading}
-                  >
-                    <X size={16} />
-                    Cancel
-                  </button>
-                  <button
-                    className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
-                    onClick={handleSaveAuth}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="animate-spin" size={16} />
-                    ) : (
-                      <Check size={16} />
-                    )}
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
-                  onClick={() => setEditingAuth(true)}
-                >
-                  <Edit size={16} />
-                  Edit
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <KeyRound size={32} className="text-supabase-primary" />
-              <h2 className="text-xl font-bold text-white">Authentication</h2>
-            </div>
-            <div className="mt-6">
-              <div className="grid grid-cols-3 gap-y-4 items-center">
-                {/* Password */}
-                <p className="font-semibold">Password:</p>
-                <div className="col-span-2">
-                  {editingAuth ? (
-                    <>
-                      <input
-                        type="password"
-                        placeholder="New Password"
-                        value={authForm.newPassword}
-                        onChange={(e) =>
-                          setAuthForm({
-                            ...authForm,
-                            newPassword: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      <input
-                        type="password"
-                        placeholder="Confirm Password"
-                        value={authForm.confirmPassword}
-                        onChange={(e) =>
-                          setAuthForm({
-                            ...authForm,
-                            confirmPassword: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full mt-2"
-                      />
-                      {errors.password && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.password}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p>{profile.passwordSet ? "Set" : "Not Set"}</p>
+                    <p className="break-words">{profile.phone}</p>
                   )}
                 </div>
 
-                {/* 2-Factor Auth */}
-                <p className="font-semibold">
-                  2-Factor Auth
-                  <br />
-                  (Passwordless):
-                </p>
+                {/* Blockchain Address */}
+                <p className="font-semibold">Blockchain Address:</p>
+                <div className="col-span-2 text-wrap">
+                  <p className="break-words">{profile.blockchain_address}</p>
+                </div>
+
+                {/* Public Key */}
+                <p className="font-semibold">Public Key:</p>
                 <div className="col-span-2">
-                  {editingAuth ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={authForm.twoFactorAuth}
-                        onChange={(e) => {
-                          setAuthForm({
-                            ...authForm,
-                            twoFactorAuth: e.target.checked,
-                          });
-                          if (e.target.checked)
-                            document.getElementById("qr-modal").showModal();
-                        }}
-                        className="checkbox checkbox-primary"
-                      />
-                      <span>Enable 2-Factor Authentication</span>
-                    </div>
-                  ) : (
-                    <p>{profile.twoFactorAuth ? "Enabled" : "Disabled"}</p>
-                  )}
+                  <p className="break-words">{profile.publickey}</p>
+                </div>
+
+                {/* Private Key */}
+                <p className="font-semibold">Private Key:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.privatekey}</p>
+                </div>
+
+                {/* Role */}
+                <p className="font-semibold">Role:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.role}</p>
+                </div>
+
+                {/* DID */}
+                <p className="font-semibold">DID:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.did}</p>
+                </div>
+
+                {/* Is Passwordless */}
+                <p className="font-semibold">Passwordless:</p>
+                <div className="col-span-2">
+                  <p className="break-words">
+                    {profile.isPWLess ? "Yes" : "No"}
+                  </p>
+                </div>
+
+                {/* Is Online */}
+                <p className="font-semibold">Online Status:</p>
+                <div className="col-span-2">
+                  <p className="break-words">
+                    {profile.isOnline ? "Online" : "Offline"}
+                  </p>
                 </div>
               </div>
             </div>

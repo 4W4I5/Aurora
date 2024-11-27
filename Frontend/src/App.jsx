@@ -4,7 +4,7 @@ import AddUser from "./pages/admin/AddUser";
 import Dashboard from "./pages/admin/AdminDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
 import UserDashboard from "./pages/user/UserDashboard";
-
+import UserProfile from "./pages/user/UserProfile";
 function App() {
   return (
     <Router>
@@ -19,7 +19,7 @@ function App() {
           element={<AdminProfile role={"admin"} />}
         />
 
-        <Route path="/user/profile" element={<AdminProfile role={"user"} />} />
+        {/* <Route path="/user/profile" element={<AdminProfile role={"user"} />} /> */}
         {/* User Routes */}
         <Route path="/" element={<LoginPage role={"user"} />} />
         <Route
@@ -27,7 +27,7 @@ function App() {
           element={<UserDashboard role={"user"} />}
         />
         {/* <Route path="/user/help" element={<UserHelp role={"user"} />} /> */}
-        {/* <Route path="/user/profile" element={<UserProfile role={"user"} />} /> */}
+        <Route path="/user/profile" element={<UserProfile role={"user"} />} />
       </Routes>
     </Router>
   );
