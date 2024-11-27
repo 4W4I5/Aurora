@@ -129,4 +129,12 @@ contract DIDRegistry {
         }
         return string(result);
     }
+
+    // Return all signers
+    function getSigners() public view returns (address[] memory) {
+        address[] memory signers = new address[](2);
+        signers[0] = msg.sender;
+        signers[1] = address(this);
+        return signers;
+    }
 }

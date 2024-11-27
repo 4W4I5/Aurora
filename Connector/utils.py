@@ -1,10 +1,138 @@
+import base64
+import binascii
 import json
 import os
 
 import web3
+from brownie import Contract
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from eth_account import Account
+from eth_keys import keys
+from eth_utils import decode_hex
 from web3 import Web3
 
 from model import User
+
+# Web3 setup
+w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))  # Adjust the provider as needed
+
+
+def register_did(address: str, public_key: str):
+    """
+    Register a DID on the blockchain with the given address and public key.
+    """
+    contract = initialize_contract()
+    tx = contract.functions.registerDID(address, public_key).transact({"from": address})
+    receipt = w3.eth.wait_for_transaction_receipt(tx)
+    return receipt
+
+
+def issue_vc(issuer: str, holder: str, credential_hash: str):
+    """
+    Issue a Verifiable Credential (VC) on the blockchain.
+    """
+    contract = initialize_contract()
+    tx = contract.functions.issueVC(holder, credential_hash).transact({"from": issuer})
+    receipt = w3.eth.wait_for_transaction_receipt(tx)
+    return receipt
+
+
+def verify_signature(message: str, signature: str, address: str, w3: Web3) -> bool:
+    """
+    Verifies the signature of a message using the Ethereum address.
+    """
+    try:
+        # Convert the signature from hex to bytes
+        signature_bytes = bytes.fromhex(signature)
+
+        # Recover the address that signed the message
+        recovered_address = w3.eth.account.recover_message(
+            message.encode("utf-8"), signature=signature_bytes
+        )
+
+        # Compare recovered address with the given address
+        return recovered_address.lower() == address.lower()
+    except Exception as e:
+        print(f"Error in verifying signature: {e}")
+        return False
+
+
+def sign_message(message: str, private_key: str):
+    """
+    Signs a message with the provided private key.
+    """
+    try:
+        private_key_bytes = base64.b64decode(
+            private_key
+        )  # Decode private key from base64
+        private_key_obj = serialization.load_pem_private_key(
+            private_key_bytes, password=None
+        )
+
+        signature = private_key_obj.sign(
+            message.encode("utf-8"), padding.PKCS1v15(), hashes.SHA256()
+        )
+
+        # Return the signature as hex
+        return signature.hex()
+    except Exception as e:
+        print(f"Error in signing message: {e}")
+        return None
+
+
+def generate_private_key():
+    """
+    Generate a private key using RSA algorithm (for testing purposes).
+    """
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    private_key = base64.b64encode(private_pem).decode("utf-8")
+
+    return private_pem
+
+
+def generate_public_key(private_key_pem: bytes, isPEM: bool, isBase64: bool):
+    """
+    Generate a public key from the given private key (in PEM, Base64, or Hex format).
+    Also verify the public key by signing a message with the private key and verifying it with the public key.
+    use eth_keys to generate a new public key from the private key.
+    """
+    try:
+        # Load the private key
+        if isPEM:
+            print(f"I am in PEM")
+            private_key = serialization.load_pem_private_key(
+                private_key_pem, password=None
+            )
+            print(f"PEM'ed private key: {private_key}")
+        elif isBase64:
+            print(f"I am in B64")
+            private_key = serialization.load_pem_private_key(
+                base64.b64decode(private_key_pem), password=None
+            )
+            print(f"Base64'ed private key: {private_key}")
+        else:
+            print(f"I am in HEX")
+            private_key = private_key_pem
+
+        privateKeyBytes = decode_hex(private_key)
+        privateKey = keys.PrivateKey(privateKeyBytes)
+        public_key = privateKey.public_key
+        print(f"Public key: {public_key}")
+
+        print(f"CONFRIM Address: {public_key.to_checksum_address()}")
+
+        return str(public_key)
+    except Exception as e:
+        print(f"Error in generating public key: {e}")
+        return None
 
 
 # Utility Functions
@@ -26,7 +154,7 @@ def verify_signature(message: str, signature: str, address: str, w3Prov: Web3) -
 
 
 # Load the deployment information
-def get_contract_details():
+def getContract():
     # Define the base directory (prefix path)
     base_dir = r"..\blockchain\ignition\deployments\chain-31337"
 
@@ -84,15 +212,17 @@ def get_contract_details():
 
 # Initialize Web3 and the contract
 def initialize_contract():
-    w3 = Web3(Web3.HTTPProvider("http://localhost:8545"))
-    contract_address, contract_abi = get_contract_details()
+    w3 = Web3(Web3.IPCProvider("http://localhost:8545"))
+    # contract_address, contract_abi = spawnContract()
+    contract_address, contract_abi = getContract()
+
     return w3.eth.contract(address=contract_address, abi=contract_abi)
 
 
 # Print the user object
 def print_user(user: User):
     print(f"User {user.username} ({user.email})")
-    print(f"  ID: {user.id}")
+    # print(f"  ID: {user.id}")
     print(f"  Phone Number: {user.phone}")
     print(f"  Role: {user.role}")
     print(f"  DID: {user.did}")
@@ -102,3 +232,15 @@ def print_user(user: User):
     print(f"  Public Key: {user.public_key}")
     print(f"  Private Key: {user.private_key}")
     print()
+
+
+# Get all accounts from hardhat testnet
+def get_loaded_accounts():
+    return w3.eth.accounts
+
+
+# Parse accounts.json and return a list of w3 accounts
+def get_accounts():
+    with open("accounts.json", "r") as file:
+        accounts = json.load(file)
+    return accounts

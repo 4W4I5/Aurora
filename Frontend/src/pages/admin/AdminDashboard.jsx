@@ -83,7 +83,7 @@ const Dashboard = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) {
+        if (data["success"] === true) {
           setUsers([...users, { id: data.address, ...newUser }]);
           setIsAddModalOpen(false);
           setNewUser({
@@ -95,7 +95,7 @@ const Dashboard = () => {
             isOnline: true,
           });
         } else {
-          alert("User registration failed: " + data.error);
+          alert("User registration failed: " + data["error"]);
         }
       });
     location.reload();

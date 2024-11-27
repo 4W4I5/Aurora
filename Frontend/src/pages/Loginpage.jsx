@@ -241,9 +241,33 @@ const LoginPage = ({ role }) => {
                 >
                   Sign In
                 </button>
+                {/* Sign in button to autofill email to "a@admin.com" and password to "a" and call handleLogin */}
+                <button
+                  type="submit"
+                  onClick={() => {
+                    setEmail("a@admin.com");
+                    setPassword("a");
+                    handleLogin();
+                  }}
+                  className="btn w-half bg-supabase.primary hover:bg-supabase.secondary text-supabase-neutral rounded-2xl mt-4"
+                >
+                  Sign In as Admin
+                </button>
+                {/* Sign in button to autofill email to "a@admin.com" and password to "a" and call handleLogin */}
+                <button
+                  type="submit"
+                  onClick={() => {
+                    setEmail("a@user.com");
+                    setPassword("a");
+                    handleLogin();
+                  }}
+                  className="btn w-half bg-supabase.primary hover:bg-supabase.secondary text-supabase-neutral rounded-2xl mt-4"
+                >
+                  Sign In as User
+                </button>
               </form>
               <button
-                onClick={() => handleNextStep()}
+                onClick={handleNextStep}
                 className="btn w-full bg-supabase.secondary hover:bg-supabase.primary text-supabase-neutral rounded-2xl mt-4"
               >
                 Login with Blockchain
@@ -261,7 +285,7 @@ const LoginPage = ({ role }) => {
               </div>
               <div className="mb-4">
                 <button
-                  onClick={passwordlessLogin}
+                  onClick={handleNextStep}
                   className="btn bg-supabase.primary hover:bg-supabase.secondary w-full text-supabase-neutral"
                 >
                   Login with Blockchain
