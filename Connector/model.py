@@ -14,9 +14,19 @@ class User(SQLModel, table=True):
     blockchain_address: str
     role: str
     did: str
+    access_token: str = None
     isPWLess: bool
     isOnline: bool
-    
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 
 class ChallengeRequest(BaseModel):

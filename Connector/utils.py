@@ -3,7 +3,7 @@ import binascii
 import json
 import os
 from datetime import datetime, timedelta
-
+from time import timezone
 import jwt
 import web3
 from brownie import Contract
@@ -253,24 +253,25 @@ def get_accounts():
     return accounts
 
 
-def create_access_token(
-    data: dict,
-    expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-):
-    """
-    Create an access token with the given data and expiry time.
-    """
-    to_encode = data.copy()
-    expire = datetime.utcnow() + expires_delta
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+# def create_access_token(
+#     data: dict,
+#     expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+# ):
+#     """
+#     Create an access token with the given data and expiry time.
+#     """
+#     to_encode = data.copy()
+#     expire = timezone.utc() + expires_delta
+#     to_encode.update({"exp": expire})
+#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+#     return encoded_jwt
 
 
-def verify_access_token(token: str):
-    try:
-        # Decode the JWT token and validate the signature
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+# def verify_access_token(token: str):
+#     try:
+#         # Decode the JWT token and validate the signature
+#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+#         print(f"Payload: {payload}")
+#         return payload
+#     except jwt.PyJWTError:
+#         raise HTTPException(status_code=401, detail="Invalid or expired token")

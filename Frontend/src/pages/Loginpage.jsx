@@ -38,7 +38,7 @@ const LoginPage = ({ role }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    const URL = "http://127.0.0.1:8000/api/auth/password/verify";
+    const URL = "http://127.0.0.1:8000/token";
 
     const user = {
       email: email,
@@ -65,12 +65,13 @@ const LoginPage = ({ role }) => {
 
     if (response.ok) {
       const data = await response.json();
+      console.log("Response data:", data);
 
-      if (data["authenticated"] === true) {
-        // Assuming the server sends the JWT token in the response
+      if (data["access_token"]) {
+        // Assuming the server sends the JWT token in the response,
         localStorage.setItem("access_token", data["access_token"]);
         console.log("JWT Token:", localStorage.getItem("access_token")); // Log the JWT token
-        navigate(`/${data.role}/dashboard`);
+        navigate(`/${data["role"]}/dashboard`);
       } else {
         alert("Authentication failed: " + data["error"]);
       }

@@ -2,28 +2,36 @@ import base64
 import json
 import secrets
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Dict
 
 import bcrypt
 import fastapi
-import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Depends
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlmodel import Session, SQLModel, create_engine, select
 from web3 import Account, Web3, contract
 
-from model import User  # Import the User model
-from model import ChallengeRequest, SignRequest, VerifyRequest
+from model import (
+    ChallengeRequest,
+    LoginRequest,
+    SignRequest,
+    Token,
+    User,
+    VerifyRequest,
+)
 from utils import (
-    create_access_token,
+    ALGORITHM,
+    SECRET_KEY,
     generate_private_key,
     generate_public_key,
     get_accounts,
@@ -33,7 +41,6 @@ from utils import (
     print_user,
     register_did,
     sign_message,
-    verify_access_token,
     verify_signature,
 )
 
@@ -66,6 +73,8 @@ sqlite_url = f"sqlite:///{sqlite_file_name}"
 connect_args = {"check_same_thread": False}
 engine = create_engine(sqlite_url, connect_args=connect_args)
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -76,32 +85,32 @@ def get_session():
         yield session
 
 
-# This function will decode the JWT token and fetch the current user
-def get_current_user(
-    token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)
-):
-    payload = verify_access_token(token)  # Custom function to decode and validate JWT
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    # The payload should include the user's email or user ID to fetch the user from the DB
-    user_email = payload.get("sub")
-    if not user_email:
-        raise HTTPException(
-            status_code=401, detail="Token does not contain user information"
-        )
-
-    # Retrieve user from the database by email
-    user = session.exec(select(User).where(User.email == user_email)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return user
-
-
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+
+
+# This function will decode the JWT token and fetch the current user
+# def get_current_user(
+#     token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)
+# ):
+#     payload = verify_access_token(token)  # Custom function to decode and validate JWT
+#     if payload is None:
+#         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+#     # The payload should include the user's email or user ID to fetch the user from the DB
+#     user_email = payload.get("sub")
+#     if not user_email:
+#         raise HTTPException(
+#             status_code=401, detail="Token does not contain user information"
+#         )
+
+#     # Retrieve user from the database by email
+#     user = session.exec(select(User).where(User.email == user_email)).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     return user
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -113,24 +122,6 @@ challenges = {}
 @app.get("/")
 async def read_root():
     return {"Connector": "Running!"}
-
-
-"""
-##############################################
-######## USERS DASHBOARD ROUTES ##############
-##############################################
-"""
-
-
-# Create a route to fetch the current user's information
-@app.get("/api/users/me")
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
-    """
-    This endpoint will return the currently logged-in user's information based on their JWT token.
-    """
-    return (
-        current_user  # This will return the full User object, as defined in the model
-    )
 
 
 """
@@ -187,34 +178,103 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
 """
 
 
-@app.post("/api/auth/password/verify")
-async def verify_password(request: Request):
+def verify_token(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=403, detail="Token is invalid or expired")
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=403, detail="Token is invalid or expired")
+
+
+@app.post("/verify-token")
+async def verify_user_token(request: Request):
+    body = await request.json()
+    print(f"[VRFY_TKN] Body: {body}")
+    token = body.get("token")
+    print(f"Verifying token: {token}")
+    verify_token(token=token)
+    return JSONResponse(status_code=200, content="Token is valid")
+
+
+# Helper function to create the JWT token
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=60)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+@app.post("/token", response_model=Token)
+async def login_for_access_token(request: Request, db: Session = Depends(get_session)):
+
+    # Grab the role from the request body
+    body = await request.json()
+    role = body.get("email").split("@")[1].split(".")[0]
+
+    # Use the existing `verify_password` function for user authentication
+    authentication_result = await verify_password(request, db)
+
+    print(f"Authentication Result: {authentication_result}")
+
+    if not authentication_result.get("authenticated"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=authentication_result.get("error", "Invalid credentials"),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # If authentication is successful, return the token
+    return JSONResponse(
+        content={
+            "access_token": authentication_result["access_token"],
+            "role": role,
+            "token_type": "bearer",
+        }
+    )
+
+
+# Function to verify password and authenticate user
+async def verify_password(request: Request, db: Session) -> Dict:
     body = await request.json()
     email = body.get("email")
     password = body.get("password")
 
+    print(f"[VRFY_PW] Body: {body}")
+
     if not email or not password:
         return {"authenticated": False, "error": "Missing email or password in BODY"}
 
-    with Session(engine) as session:
-        statement = select(User).where(User.email == email)
-        user = session.exec(statement).first()
+    # Query user from the database
+    statement = select(User).where(User.email == email)
+    user = db.exec(statement).first()
 
-    if not user or user.password_hash != password:
+    # If user not found or password is incorrect, return error
+    if not user or password != user.password_hash:
         return {"authenticated": False, "error": "Invalid email or password"}
+
+    # if not user or not pwd_context.verify(
+    #     password, user.password_hash
+    # ):  # Use bcrypt to verify password hash
+    #     return {"authenticated": False, "error": "Invalid email or password"}
 
     role = email.split("@")[1].split(".")[0]
     if role not in ["admin", "user"]:
         role = "user"
 
-    # Create JWT Token
+    # Generate JWT token
     access_token = create_access_token(data={"sub": user.email, "role": role})
 
     return {
         "authenticated": True,
-        "role": role,
         "access_token": access_token,
-        "token_type": "bearer",
+        "role": role,
     }
 
 
@@ -302,6 +362,7 @@ async def register_user(request: Request):
             blockchain_address=address,
             role=role,
             did=did,
+            # access_token=create_access_token(data={"sub": email, "role": role}),
             isPWLess=isPWLess,
             isOnline=False,
         )
@@ -381,28 +442,28 @@ async def verify_login(verify_request: VerifyRequest):
 """
 
 
-@app.post("/api/blockchain/registerDID")
-async def register_did(address: str, public_key: str):
-    try:
-        tx = Contract.functions.registerDID(address, public_key).transact(
-            {"from": address}
-        )
-        w3.eth.wait_for_transaction_receipt(tx)
-        return {"success": True, "transaction": tx.hex()}
-    except Exception as e:
-        return HTTPException(status_code=400, detail=str(e))
+# @app.post("/api/blockchain/registerDID")
+# async def register_did(address: str, public_key: str):
+#     try:
+#         tx = Contract.functions.registerDID(address, public_key).transact(
+#             {"from": address}
+#         )
+#         w3.eth.wait_for_transaction_receipt(tx)
+#         return {"success": True, "transaction": tx.hex()}
+#     except Exception as e:
+#         return HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/blockchain/issueVC")
-async def issue_vc(issuer: str, holder: str, credential_hash: str):
-    try:
-        tx = Contract.functions.issueVC(holder, credential_hash).transact(
-            {"from": issuer}
-        )
-        w3.eth.wait_for_transaction_receipt(tx)
-        return {"success": True, "transaction": tx.hex()}
-    except Exception as e:
-        return HTTPException(status_code=400, detail=str(e))
+# @app.post("/api/blockchain/issueVC")
+# async def issue_vc(issuer: str, holder: str, credential_hash: str):
+#     try:
+#         tx = Contract.functions.issueVC(holder, credential_hash).transact(
+#             {"from": issuer}
+#         )
+#         w3.eth.wait_for_transaction_receipt(tx)
+#         return {"success": True, "transaction": tx.hex()}
+#     except Exception as e:
+#         return HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/contract-info")

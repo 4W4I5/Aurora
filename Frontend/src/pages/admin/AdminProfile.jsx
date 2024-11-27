@@ -1,12 +1,6 @@
-import {
-  Check,
-  Edit,
-  KeyRound,
-  Loader2,
-  SquareUserRound,
-  X,
-} from "lucide-react";
-import React, { useState } from "react";
+import { Check, Edit, Loader2, SquareUserRound, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import sampleQR from "../../assets/sample-QR.png";
 import Sidebar from "../../components/Sidebar";
 
@@ -15,13 +9,15 @@ const AdminProfile = () => {
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAuth, setEditingAuth] = useState(false);
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
+  // Initializing profile state as empty, it will be populated by fetched data
   const [profile, setProfile] = useState({
-    firstName: "Test",
-    lastName: "User",
-    email: "Test.User@Aurora.com",
-    phone: "+92-333-333-3333",
-    passwordSet: true,
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    passwordSet: false,
     twoFactorAuth: false,
   });
 
@@ -31,6 +27,64 @@ const AdminProfile = () => {
     confirmPassword: "",
     twoFactorAuth: profile.twoFactorAuth,
   });
+
+  // Fetch user data from FastAPI's /api/users/me route
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsLoading(true);
+
+      // JWT token verification
+      const token = localStorage.getItem("access_token");
+      console.log(token);
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/verify-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to verify token");
+        }
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        localStorage.removeItem("token");
+        // Redirect to login page or show a message to the user
+        navigate("/");
+      }
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/api/users/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Assuming token is saved in localStorage
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const data = await response.json();
+        setProfile({
+          firstName: data.username,
+          lastName: "", // Assuming lastName is not part of the data, so leave it empty or map it if needed
+          email: data.email,
+          phone: data.phone,
+          passwordSet: data.password_hash ? true : false,
+          twoFactorAuth: false, // You may need a field for this, depending on your backend response
+        });
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []); // Empty dependency array ensures this runs only once when the component mounts
 
   // Validation functions
   const validatePersonal = () => {
@@ -225,7 +279,7 @@ const AdminProfile = () => {
                       )}
                     </>
                   ) : (
-                    <p>{profile.lastName}</p>
+                    <p>{profile.lastName || "Not provided"}</p>
                   )}
                 </div>
 
@@ -251,13 +305,13 @@ const AdminProfile = () => {
                   )}
                 </div>
 
-                {/* Phone Number */}
-                <p className="font-semibold">Phone No.:</p>
+                {/* Phone */}
+                <p className="font-semibold">Phone:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
                     <>
                       <input
-                        type="tel"
+                        type="text"
                         value={editForm.phone}
                         onChange={(e) =>
                           setEditForm({ ...editForm, phone: e.target.value })
@@ -270,124 +324,6 @@ const AdminProfile = () => {
                     </>
                   ) : (
                     <p>{profile.phone}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Authentication Card */}
-          <div className="bg-supabase-base-100 rounded-2xl shadow-md p-6 relative">
-            <div className="absolute top-4 right-4">
-              {editingAuth ? (
-                <div className="space-x-2">
-                  <button
-                    className="btn bg-gray-500 hover:bg-gray-600 text-supabase-base-100 p-2 rounded-2xl px-4"
-                    onClick={() => {
-                      setEditingAuth(false);
-                      setAuthForm({
-                        newPassword: "",
-                        confirmPassword: "",
-                        twoFactorAuth: profile.twoFactorAuth,
-                      });
-                      setErrors({});
-                    }}
-                    disabled={isLoading}
-                  >
-                    <X size={16} />
-                    Cancel
-                  </button>
-                  <button
-                    className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
-                    onClick={handleSaveAuth}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="animate-spin" size={16} />
-                    ) : (
-                      <Check size={16} />
-                    )}
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
-                  onClick={() => setEditingAuth(true)}
-                >
-                  <Edit size={16} />
-                  Edit
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <KeyRound size={32} className="text-supabase-primary" />
-              <h2 className="text-xl font-bold text-white">Authentication</h2>
-            </div>
-            <div className="mt-6">
-              <div className="grid grid-cols-3 gap-y-4 items-center">
-                {/* Password */}
-                <p className="font-semibold">Password:</p>
-                <div className="col-span-2">
-                  {editingAuth ? (
-                    <>
-                      <input
-                        type="password"
-                        placeholder="New Password"
-                        value={authForm.newPassword}
-                        onChange={(e) =>
-                          setAuthForm({
-                            ...authForm,
-                            newPassword: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      <input
-                        type="password"
-                        placeholder="Confirm Password"
-                        value={authForm.confirmPassword}
-                        onChange={(e) =>
-                          setAuthForm({
-                            ...authForm,
-                            confirmPassword: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full mt-2"
-                      />
-                      {errors.password && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.password}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p>{profile.passwordSet ? "Set" : "Not Set"}</p>
-                  )}
-                </div>
-
-                {/* 2-Factor Auth */}
-                <p className="font-semibold">2-Factor Auth:</p>
-                <div className="col-span-2">
-                  {editingAuth ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={authForm.twoFactorAuth}
-                        onChange={(e) => {
-                          setAuthForm({
-                            ...authForm,
-                            twoFactorAuth: e.target.checked,
-                          });
-                          if (e.target.checked)
-                            document.getElementById("qr-modal").showModal();
-                        }}
-                        className="checkbox checkbox-primary"
-                      />
-                      <span>Enable 2-Factor Authentication</span>
-                    </div>
-                  ) : (
-                    <p>{profile.twoFactorAuth ? "Enabled" : "Disabled"}</p>
                   )}
                 </div>
               </div>
