@@ -12,10 +12,7 @@ function App() {
       <Routes>
         {/* Admin Routes */}
         <Route path="/admin/login" element={<LoginPage role={"admin"} />} />
-        <Route
-          path="/admin/dashboard"
-          element={<Dashboard role={"admin"} />}
-        />
+        <Route path="/admin/dashboard" element={<Dashboard role={"admin"} />} />
         <Route path="/admin/adduser" element={<AddUser role={"admin"} />} />
 
         <Route

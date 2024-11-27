@@ -6,11 +6,38 @@ import {
   SquareUserRound,
   X,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import sampleQR from "../../assets/sample-QR.png";
 import Sidebar from "../../components/Sidebar";
 
 const UserProfile = () => {
+  const verifyJWT = async (e) => {
+    // JWT token verification
+    const token = localStorage.getItem("access_token");
+    console.log(token);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/verify-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to verify token");
+      }
+    } catch (error) {
+      console.error("Error verifying token:", error);
+      localStorage.removeItem("token");
+      // Redirect to login page or show a message to the user
+      navigate("/");
+    }
+  };
+
+  useEffect(() => {
+    verifyJWT();
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAuth, setEditingAuth] = useState(false);
