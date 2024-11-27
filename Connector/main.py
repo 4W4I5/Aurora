@@ -213,6 +213,9 @@ async def verify_user_token(request: Request):
             user = session.exec(statement).first()
             user.access_token = token
             user.isOnline = True
+            # if valid user has either publickey, privatekey or blockchain address. set isPWless to true
+            if user.public_key or user.private_key or user.blockchain_address:
+                user.isPWLess = True
             session.add(user)
             session.commit()
             session.refresh(user)
