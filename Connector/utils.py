@@ -18,22 +18,25 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Token expiry time
 w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))  # Adjust the provider as needed
 
 
-def register_did(address: str, public_key: str):
+def register_did(address: str, did: str):
     """
     Register a DID on the blockchain with the given address and public key.
     """
     contract = initialize_contract()
-    tx = contract.functions.registerDID(address, public_key).transact({"from": address})
+    tx = contract.functions.registerDID(address, did).transact({"from": address})
     receipt = w3.eth.wait_for_transaction_receipt(tx)
     return receipt
+
 
 def get_did(address: str):
     """
     Get the DID for a given address.
     """
     contract = initialize_contract()
-    did = contract.functions.getDID(address).call()
-    return did
+    tx = contract.functions.getDID(address).call()
+    receipt = w3.eth.wait_for_transaction_receipt(tx)
+    return receipt
+
 
 def issue_vc(issuer: str, holder: str, credential_hash: str):
     """
@@ -238,10 +241,11 @@ def print_user(user: User):
     print(f"  Role: {user.role}")
     print(f"  DID: {user.did}")
     print(f"  Is Passwordless: {user.isPWLess}")
+    if user.isPWLess:
+        print(f"  Public Key: {user.public_key}")
+        print(f"  Private Key: {user.private_key}")
+        print(f"  Blockchain Address: {user.blockchain_address}")
     print(f"  Is Online: {user.isOnline}")
-    print(f"  Blockchain Address: {user.blockchain_address}")
-    print(f"  Public Key: {user.public_key}")
-    print(f"  Private Key: {user.private_key}")
     print()
 
 
@@ -255,4 +259,3 @@ def get_accounts():
     with open("accounts.json", "r") as file:
         accounts = json.load(file)
     return accounts
-

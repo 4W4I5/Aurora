@@ -29,10 +29,9 @@ contract DIDRegistry {
     // Event for VC revocation
     event VCRevoked(address indexed holder, string credentialHash);
 
-    // Register a DID based on a public key
-    function registerDID(address user, bytes calldata publicKey) public {
+    // Register a DID directly
+    function registerDID(address user, string calldata did) public {
         require(bytes(dids[user]).length == 0, "DID already registered");
-        string memory did = _deriveDIDFromPublicKey(publicKey);
         dids[user] = did;
         emit DIDRegistered(user, did);
     }
@@ -107,28 +106,6 @@ contract DIDRegistry {
         return false;
     }
 
-    // Helper function to derive a DID from the public key
-    function _deriveDIDFromPublicKey(
-        bytes memory publicKey
-    ) private pure returns (string memory) {
-        return string(abi.encodePacked("did:key:", toHexString(publicKey)));
-    }
-
-    // Convert bytes to a hex string (useful for DID generation)
-    function toHexString(
-        bytes memory data
-    ) private pure returns (string memory) {
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory result = new bytes(2 + data.length * 2);
-        result[0] = "0";
-        result[1] = "x";
-
-        for (uint256 i = 0; i < data.length; i++) {
-            result[2 + i * 2] = alphabet[uint(uint8(data[i] >> 4))];
-            result[3 + i * 2] = alphabet[uint(uint8(data[i] & 0x0f))];
-        }
-        return string(result);
-    }
 
     // Return all signers
     function getSigners() public view returns (address[] memory) {

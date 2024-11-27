@@ -336,7 +336,7 @@ const Dashboard = () => {
               />
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Enter Password"
                 value={editingUser?.password}
                 onChange={(e) =>
                   setEditingUser({ ...editingUser, password: e.target.value })

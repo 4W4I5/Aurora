@@ -14,6 +14,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from sqlmodel import Session, SQLModel, create_engine, select
 from web3 import Web3
+from web3.exceptions import ContractLogicError
 
 from model import SignRequest, Token, User, VerifyRequest
 from utils import (
@@ -155,19 +156,178 @@ async def delete_user(user_id: int, session: SessionDep):
     return {"success": True}
 
 
+# @app.put("/api/users/{user_id}")
+# async def update_user(user_id: int, user_data: dict, session: SessionDep):
+#     """
+#     Update a user's information based on the user_id and the new data provided in the request body.
+#     """
+#     user = session.get(User, user_id)
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     # Compare what is being changed and print the differences only
+#     print(f"Updating user ({user.email})")
+#     print(f"Changes:")
+#     with Session(engine) as session:
+#         statement = select(User).where(User.id == user_id)
+#         user = session.exec(statement).first()
+
+#         # Update the user object with the new data
+#         for key, value in user_data.items():
+#             if hasattr(user, key):  # Only update valid attributes of the model
+#                 setattr(user, key, value)
+#             if hasattr(user, key) and getattr(user, key) != value:
+#                 print(f"  {key}: {getattr(user, key)} -> {value}")
+
+#     # Generate keys if isPWLess is set to True
+#     if user.isPWLess:
+#         # Get all users from DB
+#         with Session(engine) as session:
+#             all_users = session.exec(select(User)).all()
+
+#         # Print all all_users with counter but use print_user
+#         for i, user in enumerate(all_users):
+#             print(f"User {i + 1}:")
+#             print_user(user)
+
+#         # Pick an account from the JSON of available accounts, make sure it isnt already in use in the db then assign the address and priviate key
+#         accounts = get_accounts()
+
+#         # print(f"JSON Accounts: {accounts}")
+
+#         # Get all users from DB
+#         with Session(engine) as session:
+#             users = session.exec(select(User)).all()
+
+#         # print(f"Users in DB: {users}")
+
+#         # Check if an address is free from the JSON accounts. if it is then assign it to the user along with its corresponding private key from the JSON accounts object
+#         print(f"Checking if any address is available")
+
+#         address = None
+#         private_key = None
+
+#         # Ensure that users is a list of dictionaries and each user has a 'blockchain_address' key
+#         for account in accounts:
+#             # Use correct key for accessing the account address
+#             if account["account"] not in [user.blockchain_address for user in users]:
+#                 address = account["account"]
+#                 private_key = account["privateKey"]
+#                 break
+
+#         # Optional: if no address was found, you can check if the address and private_key were set
+#         if address and private_key:
+#             print(f"Found available address: {address}")
+#         else:
+#             print("No available address found.")
+
+#         print(f"Address: {address}\n Private Key: {private_key}")
+
+#         # If no address is found, return error
+#         if not address:
+#             return {"success": False, "error": "No available accounts."}
+
+#         # Generate a public key from the private key
+#         print(f"Generating Public Key:")
+#         public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
+#         print(f"Public Key: {public_key}")
+
+#         # Register the DID on the blockchain
+#         print(f"Registering DID on blockchain:")
+#         # did = register_did(address, public_key)
+#         did = f"did:key:{public_key}"
+#         print(f"Registered DID: {did}")
+
+#         print(
+#             f"SUCCESS! Generated: \n Account: {address}\n Private Key: {private_key}\n Public Key: {public_key}\n DID: {did}"
+#         )
+#         user.blockchain_address = address
+#         user.private_key = private_key
+#         user.public_key = public_key
+
+#         print_user(user)
+
+#     elif not user.isPWLess:
+#         user.public_key = None
+#         user.private_key = None
+#         user.blockchain_address = None
+
+#     session.add(user)
+#     session.commit()
+#     session.refresh(user)
+#     return {"success": True, "user": user}
+
+
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: int, user_data: dict, session: SessionDep):
+    """
+    Update a user's information based on the user_id and the new data provided in the request body.
+    """
+    # Fetch user from the database
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    for key, value in user_data.items():
-        if hasattr(user, key):  # Only update valid attributes of the model
-            setattr(user, key, value)
+    print(f"Updating user ({user.email})")
+    print(f"Changes:")
 
+    # Update user attributes based on the user_data
+    for key, value in user_data.items():
+        if hasattr(user, key):  # Only update valid attributes
+            old_value = getattr(user, key)
+            setattr(user, key, value)
+            if old_value != value:
+                print(f"  {key}: {old_value} -> {value}")
+
+    # If the user is passwordless, generate keys
+    if user.isPWLess:
+        print(f"Checking if any address is available")
+
+        accounts = get_accounts()
+        address = None
+        private_key = None
+
+        # Get the list of existing users with blockchain addresses
+        users_in_db = session.exec(select(User)).all()
+
+        for account in accounts:
+            # Ensure the address is not already in use
+            if account["account"] not in [
+                user.blockchain_address for user in users_in_db
+            ]:
+                address = account["account"]
+                private_key = account["privateKey"]
+                break
+
+        if not address:
+            return {"success": False, "error": "No available accounts."}
+
+        # Generate the public key from the private key
+        public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
+
+        # Register DID (just simulating here)
+        did = f"did:key:{public_key}"
+
+        # Update user blockchain-related fields
+        user.blockchain_address = address
+        user.private_key = private_key
+        user.public_key = public_key
+
+        print(
+            f"SUCCESS! Generated:\n Address: {address}\n Private Key: {private_key}\n Public Key: {public_key}\n DID: {did}"
+        )
+
+    elif not user.isPWLess:
+        # Clear blockchain-related fields if not passwordless
+        user.public_key = None
+        user.private_key = None
+        user.blockchain_address = None
+
+    # Add and commit the changes to the database
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    session.commit()  # Ensure changes are committed to DB
+    session.refresh(user)  # Refresh the user object to get the latest data from DB
+
     return {"success": True, "user": user}
 
 
@@ -215,8 +375,8 @@ async def verify_user_token(request: Request):
             user.access_token = token
             user.isOnline = True
             # if valid user has either publickey, privatekey or blockchain address. set isPWless to true
-            if user.public_key or user.private_key or user.blockchain_address:
-                user.isPWLess = True
+            # if user.public_key or user.private_key or user.blockchain_address:
+            # user.isPWLess = True
             session.add(user)
             session.commit()
             session.refresh(user)
@@ -329,69 +489,17 @@ async def register_user(request: Request):
         if user:
             return {"success": False, "error": "User already exists."}
 
-        # Pick an account from the JSON of available accounts, make sure it isnt already in use in the db then assign the address and priviate key
-        accounts = get_accounts()
-
-        # print(f"JSON Accounts: {accounts}")
-
-        # Get all users from DB
-        with Session(engine) as session:
-            users = session.exec(select(User)).all()
-
-        # print(f"Users in DB: {users}")
-
-        # Check if an address is free from the JSON accounts. if it is then assign it to the user along with its corresponding private key from the JSON accounts object
-        print(f"Checking if any address is available")
-
-        address = None
-        private_key = None
-
-        # Ensure that users is a list of dictionaries and each user has a 'blockchain_address' key
-        for account in accounts:
-            # Use correct key for accessing the account address
-            if account["account"] not in [user.blockchain_address for user in users]:
-                address = account["account"]
-                private_key = account["privateKey"]
-                break
-
-        # Optional: if no address was found, you can check if the address and private_key were set
-        if address and private_key:
-            print(f"Found available address: {address}")
-        else:
-            print("No available address found.")
-
-        print(f"Address: {address}\n Private Key: {private_key}")
-
-        # If no address is found, return error
-        if not address:
-            return {"success": False, "error": "No available accounts."}
-
-        # Generate a public key from the private key
-        print(f"Generating Public Key:")
-        public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
-        print(f"Public Key: {public_key}")
-
-        # Register the DID on the blockchain
-        print(f"Registering DID on blockchain:")
-        # did = register_did(address, public_key)
-        did = f"did:key:{public_key}"
-        print(f"Registered DID: {did}")
-
-        print(
-            f"SUCCESS! Generated: \n Account: {address}\n Private Key: {private_key}\n Public Key: {public_key}\n DID: {did}"
-        )
-
         user = User(
             username=username,
             email=email,
             phone=phoneNumber,
             password_hash=password,
-            public_key=public_key,
-            private_key=private_key,
-            blockchain_address=address,
+            # public_key=public_key,
+            # private_key=private_key,
+            # blockchain_address=address,
             role=role,
-            did=did,
-            isPWLess=isPWLess,
+            # did=did,
+            isPWLess=False,  # Only enable passwordless when user triggers it
             isOnline=False,
         )
 
@@ -405,7 +513,7 @@ async def register_user(request: Request):
             print(e)
             return JSONResponse(status_code=400, content="Error registering user.")
 
-        return {"success": True, "address": address}
+        return {"success": True}
     except Exception as e:
         print(e)
         return JSONResponse(status_code=400, content="Error registering user.")
@@ -495,21 +603,23 @@ async def loaded_accounts():
     return {"accounts": accounts}
 
 
-# Test register_did
-@app.get("/test/registerdid")
-async def test_register_did():
-    address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
-    private_key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
-    public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
-    print(f"Registering DID on blockchain:")
-    print(f"Address: {address}\n Public Key: {public_key}\n Private Key: {private_key}")
+# # Test register_did
+# @app.get("/test/registerdid")
+# async def test_register_did():
+#     address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+#     private_key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+#     public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
+#     print(f"Registering DID on blockchain:")
+#     print(f"Address: {address}\n Public Key: {public_key}\n Private Key: {private_key}")
 
-    try:
-        did = register_did(address, public_key)
-        print(f"Registered DID: {did}")
-    except Exception as e:
-        # Confirm if the DID was registered and is valid
-        did = get_did(address)
-        print(f"Retrieved DID: {did}")
+#     try:
+#         print(f"DID GOT: {get_did(address)}")
+#     except ContractLogicError as e:
+#         print(e)
+#         register_did(address, hex(f"did:key:{public_key[2:]})"))
+#         return {"success": False, "error": "Error registering DID.", "message": str(e)}
+#     except ValueError as e:
+#         print(e, "Raise Gas")
 
-    return {"success": True, "did": did}
+#     did = "ahha"
+#     return {"success": True, "did": did}
