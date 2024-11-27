@@ -16,6 +16,7 @@ class User(SQLModel, table=True):
     did: str
     isPWLess: bool
     isOnline: bool
+    
 
 
 class ChallengeRequest(BaseModel):

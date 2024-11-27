@@ -38,7 +38,7 @@ const LoginPage = ({ role }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    const URL = "http://127.0.0.1:8000/api/auth/password/verify"; // Adjust as per your connector server API.
+    const URL = "http://127.0.0.1:8000/api/auth/password/verify";
 
     const user = {
       email: email,
@@ -58,7 +58,7 @@ const LoginPage = ({ role }) => {
     const response = await fetch(URL, {
       method: "POST",
       headers: {
-        "content-type": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(user),
     });
@@ -67,6 +67,9 @@ const LoginPage = ({ role }) => {
       const data = await response.json();
 
       if (data["authenticated"] === true) {
+        // Assuming the server sends the JWT token in the response
+        localStorage.setItem("access_token", data["access_token"]);
+        console.log("JWT Token:", localStorage.getItem("access_token")); // Log the JWT token
         navigate(`/${data.role}/dashboard`);
       } else {
         alert("Authentication failed: " + data["error"]);
@@ -74,12 +77,26 @@ const LoginPage = ({ role }) => {
     } else {
       const errorData = await response.json();
       alert("Failed to authenticate user\n" + errorData.error);
+      // Check if the response status is 401 (Unauthorized)
+      if (response.status === 401) {
+        localStorage.removeItem("access_token"); // Clear the token if expired
+        navigate("/login"); // Redirect to login page
+      }
     }
   };
 
   const requestChallenge = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/challenge"); // Connector API for challenge
+      // Get JWT token from localStorage
+      const token = localStorage.getItem("access_token");
+
+      const res = await fetch("http://127.0.0.1:8000/api/auth/challenge", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Add token to header
+        },
+      });
+
       const data = await res.json();
       setMessage(data.message);
     } catch (error) {
@@ -115,8 +132,8 @@ const LoginPage = ({ role }) => {
       });
 
       const data = await verifyRes.json();
-      setStatus(data.success ? "Login Successful!" : "Login Failed!");
-      if (data.success) {
+      setStatus(data.authenticated ? "Login Successful!" : "Login Failed!");
+      if (data.authenticated) {
         navigate("/user/dashboard");
       }
     } catch (error) {

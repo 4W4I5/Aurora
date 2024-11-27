@@ -1,25 +1,31 @@
 import base64
 import json
 import secrets
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import bcrypt
 import fastapi
+import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Depends
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from sqlmodel import Session, SQLModel, create_engine, select
 from web3 import Account, Web3, contract
 
-from model import ChallengeRequest, SignRequest, User, VerifyRequest
-from utils import generate_public_key  # spawnContract,
+from model import User  # Import the User model
+from model import ChallengeRequest, SignRequest, VerifyRequest
 from utils import (
+    create_access_token,
     generate_private_key,
+    generate_public_key,
     get_accounts,
     get_loaded_accounts,
     initialize_contract,
@@ -27,11 +33,17 @@ from utils import (
     print_user,
     register_did,
     sign_message,
+    verify_access_token,
     verify_signature,
 )
 
 # CORS Configuration
 origins = ["*"]  # Allow all origins for now
+
+
+# Secret key for encoding and decoding JWT tokens
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 # FastAPI setup
 app = fastapi.FastAPI()
@@ -64,6 +76,29 @@ def get_session():
         yield session
 
 
+# This function will decode the JWT token and fetch the current user
+def get_current_user(
+    token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)
+):
+    payload = verify_access_token(token)  # Custom function to decode and validate JWT
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # The payload should include the user's email or user ID to fetch the user from the DB
+    user_email = payload.get("sub")
+    if not user_email:
+        raise HTTPException(
+            status_code=401, detail="Token does not contain user information"
+        )
+
+    # Retrieve user from the database by email
+    user = session.exec(select(User).where(User.email == user_email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
@@ -78,6 +113,24 @@ challenges = {}
 @app.get("/")
 async def read_root():
     return {"Connector": "Running!"}
+
+
+"""
+##############################################
+######## USERS DASHBOARD ROUTES ##############
+##############################################
+"""
+
+
+# Create a route to fetch the current user's information
+@app.get("/api/users/me")
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """
+    This endpoint will return the currently logged-in user's information based on their JWT token.
+    """
+    return (
+        current_user  # This will return the full User object, as defined in the model
+    )
 
 
 """
@@ -154,9 +207,14 @@ async def verify_password(request: Request):
     if role not in ["admin", "user"]:
         role = "user"
 
+    # Create JWT Token
+    access_token = create_access_token(data={"sub": user.email, "role": role})
+
     return {
         "authenticated": True,
         "role": role,
+        "access_token": access_token,
+        "token_type": "bearer",
     }
 
 

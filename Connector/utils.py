@@ -2,7 +2,9 @@ import base64
 import binascii
 import json
 import os
+from datetime import datetime, timedelta
 
+import jwt
 import web3
 from brownie import Contract
 from cryptography.exceptions import InvalidSignature
@@ -12,10 +14,15 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from eth_account import Account
 from eth_keys import keys
 from eth_utils import decode_hex
+from fastapi.exceptions import HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from web3 import Web3
 
 from model import User
 
+SECRET_KEY = "SomeVerySecretKeyHena"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Token expiry time
 # Web3 setup
 w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))  # Adjust the provider as needed
 
@@ -244,3 +251,26 @@ def get_accounts():
     with open("accounts.json", "r") as file:
         accounts = json.load(file)
     return accounts
+
+
+def create_access_token(
+    data: dict,
+    expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+):
+    """
+    Create an access token with the given data and expiry time.
+    """
+    to_encode = data.copy()
+    expire = datetime.utcnow() + expires_delta
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def verify_access_token(token: str):
+    try:
+        # Decode the JWT token and validate the signature
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
