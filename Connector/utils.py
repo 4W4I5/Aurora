@@ -27,6 +27,13 @@ def register_did(address: str, public_key: str):
     receipt = w3.eth.wait_for_transaction_receipt(tx)
     return receipt
 
+def get_did(address: str):
+    """
+    Get the DID for a given address.
+    """
+    contract = initialize_contract()
+    did = contract.functions.getDID(address).call()
+    return did
 
 def issue_vc(issuer: str, holder: str, credential_hash: str):
     """
@@ -216,7 +223,7 @@ def getContract():
 
 # Initialize Web3 and the contract
 def initialize_contract():
-    w3 = Web3(Web3.IPCProvider("http://localhost:8545"))
+    w3 = Web3(Web3.HTTPProvider("http://localhost:8545"))
     # contract_address, contract_abi = spawnContract()
     contract_address, contract_abi = getContract()
 

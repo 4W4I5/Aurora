@@ -21,6 +21,7 @@ from utils import (
     SECRET_KEY,
     generate_public_key,
     get_accounts,
+    get_did,
     get_loaded_accounts,
     initialize_contract,
     print_user,
@@ -49,7 +50,7 @@ app.add_middleware(
 )
 
 # Web3 setup
-w3 = Web3(Web3.IPCProvider("http://127.0.0.1:8545"))  # Hardhat testnet
+w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))  # Hardhat testnet
 
 # Database setup
 sqlite_file_name = "./awais_database.db"
@@ -492,3 +493,23 @@ async def json_accounts():
 async def loaded_accounts():
     accounts = get_loaded_accounts()
     return {"accounts": accounts}
+
+
+# Test register_did
+@app.get("/test/registerdid")
+async def test_register_did():
+    address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    private_key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+    public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
+    print(f"Registering DID on blockchain:")
+    print(f"Address: {address}\n Public Key: {public_key}\n Private Key: {private_key}")
+
+    try:
+        did = register_did(address, public_key)
+        print(f"Registered DID: {did}")
+    except Exception as e:
+        # Confirm if the DID was registered and is valid
+        did = get_did(address)
+        print(f"Retrieved DID: {did}")
+
+    return {"success": True, "did": did}
