@@ -1,17 +1,13 @@
-import { Check, Edit, Loader2, SquareUserRound, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import sampleQR from "../../assets/sample-QR.png";
+import React, { useState, useEffect } from "react";
+import { Check, Loader2, X, Edit, SquareUserRound } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
+import sampleQR from "../../assets/sample-QR.png";
+import { useNavigate } from "react-router-dom";
 
 const UserProfile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [editingPersonal, setEditingPersonal] = useState(false);
-  const [editingAuth, setEditingAuth] = useState(false);
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
-
-  // Initializing profile state as empty, it will be populated by fetched data
   const [profile, setProfile] = useState({
     username: "",
     email: "",
@@ -25,55 +21,20 @@ const UserProfile = () => {
     isOnline: false,
   });
 
-  const [editForm, setEditForm] = useState({ ...profile });
-  const [authForm, setAuthForm] = useState({
-    newPassword: "",
-    confirmPassword: "",
-    twoFactorAuth: profile.twoFactorAuth,
-  });
+  const navigate = useNavigate();
 
-  // Fetch user data from FastAPI's /api/users/me route
   useEffect(() => {
     const fetchUserProfile = async () => {
       setIsLoading(true);
-
-      // JWT token verification
-      const token = localStorage.getItem("access_token");
-      console.log(token);
-
-      try {
-        const response = await fetch("http://127.0.0.1:8000/verify-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to verify token");
-        }
-      } catch (error) {
-        console.error("Error verifying token:", error);
-        localStorage.removeItem("token");
-        // Redirect to login page or show a message to the user
-        navigate("/");
-      }
-
       try {
         const response = await fetch("http://127.0.0.1:8000/api/profile", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token: localStorage.getItem("access_token") }),
         });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
         const data = await response.json();
-        console.log(data);
         setProfile({
           username: data.username,
           email: data.email,
@@ -94,79 +55,19 @@ const UserProfile = () => {
     };
 
     fetchUserProfile();
-  }, []); // Empty dependency array ensures this runs only once when the component mounts
+  }, []);
 
-  // Validation functions
-  const validatePersonal = () => {
-    const errors = {};
-    if (!editForm.firstName) errors.firstName = "First name is required";
-    if (!editForm.lastName) errors.lastName = "Last name is required";
-    if (!editForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email))
-      errors.email = "Valid email is required";
-    if (!editForm.phone || !/^\+?[\d\s-]+$/.test(editForm.phone))
-      errors.phone = "Valid phone number is required";
-    return errors;
-  };
-
-  const validateAuth = () => {
-    const errors = {};
-    if (authForm.newPassword !== authForm.confirmPassword)
-      errors.password = "Passwords do not match";
-    if (authForm.newPassword && authForm.newPassword.length < 8)
-      errors.password = "Password must be at least 8 characters";
-    return errors;
-  };
-
-  // Save handlers with dummy API calls
-  const handleSavePersonal = async () => {
-    const validationErrors = validatePersonal();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProfile(editForm);
-      setEditingPersonal(false);
-      setErrors({});
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSaveAuth = async () => {
-    const validationErrors = validateAuth();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProfile((prev) => ({
-        ...prev,
-        passwordSet: authForm.newPassword ? true : prev.passwordSet,
-        twoFactorAuth: authForm.twoFactorAuth,
-      }));
-      setEditingAuth(false);
-      setAuthForm({
-        newPassword: "",
-        confirmPassword: "",
-        twoFactorAuth: authForm.twoFactorAuth,
-      });
-      setErrors({});
-    } finally {
-      setIsLoading(false);
-    }
+  // Function to save blockchain keys to localStorage
+  const saveBlockchainKeysToLocalStorage = () => {
+    localStorage.setItem("blockchain_address", profile.blockchain_address);
+    localStorage.setItem("publickey", profile.publickey);
+    localStorage.setItem("privatekey", profile.privatekey);
+    alert("Blockchain keys saved to localStorage!");
   };
 
   return (
     <Sidebar role={"user"}>
+      {/* QR Modal */}
       <dialog id="qr-modal" className="modal">
         <div className="modal-box">
           <h3 className="font-bold text-lg">Connect with your mobile app</h3>
@@ -203,7 +104,6 @@ const UserProfile = () => {
                     className="btn bg-gray-500 hover:bg-gray-600 text-supabase-base-100 p-2 rounded-2xl px-4"
                     onClick={() => {
                       setEditingPersonal(false);
-                      setEditForm({ ...profile });
                       setErrors({});
                     }}
                     disabled={isLoading}
@@ -213,7 +113,7 @@ const UserProfile = () => {
                   </button>
                   <button
                     className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
-                    onClick={handleSavePersonal}
+                    onClick={() => setEditingPersonal(false)}
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -229,7 +129,6 @@ const UserProfile = () => {
                   className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl px-4"
                   onClick={() => setEditingPersonal(true)}
                 >
-                  <Edit size={16} />
                   Edit
                 </button>
               )}
@@ -248,12 +147,9 @@ const UserProfile = () => {
                   {editingPersonal ? (
                     <input
                       type="text"
-                      value={editForm.username}
+                      value={profile.username}
                       onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          username: e.target.value,
-                        })
+                        setProfile({ ...profile, username: e.target.value })
                       }
                       className="input input-bordered w-full"
                     />
@@ -270,9 +166,9 @@ const UserProfile = () => {
                   {editingPersonal ? (
                     <input
                       type="email"
-                      value={editForm.email}
+                      value={profile.email}
                       onChange={(e) =>
-                        setEditForm({ ...editForm, email: e.target.value })
+                        setProfile({ ...profile, email: e.target.value })
                       }
                       className="input input-bordered w-full"
                     />
@@ -287,9 +183,9 @@ const UserProfile = () => {
                   {editingPersonal ? (
                     <input
                       type="text"
-                      value={editForm.phone}
+                      value={profile.phone}
                       onChange={(e) =>
-                        setEditForm({ ...editForm, phone: e.target.value })
+                        setProfile({ ...profile, phone: e.target.value })
                       }
                       className="input input-bordered w-full"
                     />
@@ -344,6 +240,57 @@ const UserProfile = () => {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Blockchain Keys Card */}
+          <div className="bg-supabase-base-100 rounded-2xl shadow-md p-6">
+            <div className="flex gap-2">
+              <h2 className="text-xl font-bold text-white">Blockchain Keys</h2>
+            </div>
+            <div className="mt-6">
+              <div className="grid grid-cols-3 gap-y-4 items-center">
+                {/* Blockchain Address */}
+                <p className="font-semibold">Blockchain Address:</p>
+                <div className="col-span-2">
+                  <input
+                    type="text"
+                    value={profile.blockchain_address}
+                    disabled
+                    className="input input-bordered w-full"
+                  />
+                </div>
+
+                {/* Public Key */}
+                <p className="font-semibold">Public Key:</p>
+                <div className="col-span-2">
+                  <input
+                    type="text"
+                    value={profile.publickey}
+                    disabled
+                    className="input input-bordered w-full"
+                  />
+                </div>
+
+                {/* Private Key */}
+                <p className="font-semibold">Private Key:</p>
+                <div className="col-span-2">
+                  <input
+                    type="text"
+                    value={profile.privatekey}
+                    disabled
+                    className="input input-bordered w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Button to Save to LocalStorage */}
+              <button
+                className="btn bg-supabase-primary/75 hover:bg-supabase-primary text-supabase-base-100 p-2 rounded-2xl mt-6"
+                onClick={saveBlockchainKeysToLocalStorage}
+              >
+                Save Blockchain Keys to LocalStorage
+              </button>
             </div>
           </div>
         </div>
