@@ -13,12 +13,16 @@ const AdminProfile = () => {
 
   // Initializing profile state as empty, it will be populated by fetched data
   const [profile, setProfile] = useState({
-    firstName: "",
-    lastName: "",
+    username: "",
     email: "",
     phone: "",
-    passwordSet: false,
-    twoFactorAuth: false,
+    publickey: "",
+    privatekey: "",
+    blockchain_address: "",
+    role: "",
+    did: "",
+    isPWLess: false,
+    isOnline: false,
   });
 
   const [editForm, setEditForm] = useState({ ...profile });
@@ -56,11 +60,12 @@ const AdminProfile = () => {
       }
 
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/users/me", {
-          method: "GET",
+        const response = await fetch("http://127.0.0.1:8000/api/profile", {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // Assuming token is saved in localStorage
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({ token }),
         });
 
         if (!response.ok) {
@@ -68,13 +73,18 @@ const AdminProfile = () => {
         }
 
         const data = await response.json();
+        console.log(data);
         setProfile({
-          firstName: data.username,
-          lastName: "", // Assuming lastName is not part of the data, so leave it empty or map it if needed
+          username: data.username,
           email: data.email,
           phone: data.phone,
-          passwordSet: data.password_hash ? true : false,
-          twoFactorAuth: false, // You may need a field for this, depending on your backend response
+          publickey: data.public_key,
+          privatekey: data.private_key,
+          blockchain_address: data.blockchain_address,
+          role: data.role,
+          did: data.did,
+          isPWLess: data.isPWLess,
+          isOnline: data.isOnline,
         });
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -232,54 +242,23 @@ const AdminProfile = () => {
             </div>
             <div className="mt-6">
               <div className="grid grid-cols-3 gap-y-4 items-center">
-                {/* First Name */}
-                <p className="font-semibold">First name:</p>
+                {/* Name */}
+                <p className="font-semibold">Username:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editForm.firstName}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            firstName: e.target.value,
-                          })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.firstName && (
-                        <p className="text-red-500 text-sm">
-                          {errors.firstName}
-                        </p>
-                      )}
-                    </>
+                    <input
+                      type="text"
+                      value={editForm.username}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          username: e.target.value,
+                        })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.firstName}</p>
-                  )}
-                </div>
-
-                {/* Last Name */}
-                <p className="font-semibold">Last name:</p>
-                <div className="col-span-2">
-                  {editingPersonal ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editForm.lastName}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, lastName: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.lastName && (
-                        <p className="text-red-500 text-sm">
-                          {errors.lastName}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p>{profile.lastName || "Not provided"}</p>
+                    <p className="break-words">{profile.username || "Not provided"}</p>
                   )}
                 </div>
 
@@ -287,21 +266,16 @@ const AdminProfile = () => {
                 <p className="font-semibold">Email:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, email: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.email && (
-                        <p className="text-red-500 text-sm">{errors.email}</p>
-                      )}
-                    </>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, email: e.target.value })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.email}</p>
+                    <p className="break-words">{profile.email}</p>
                   )}
                 </div>
 
@@ -309,22 +283,59 @@ const AdminProfile = () => {
                 <p className="font-semibold">Phone:</p>
                 <div className="col-span-2">
                   {editingPersonal ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editForm.phone}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, phone: e.target.value })
-                        }
-                        className="input input-bordered w-full"
-                      />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm">{errors.phone}</p>
-                      )}
-                    </>
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, phone: e.target.value })
+                      }
+                      className="input input-bordered w-full"
+                    />
                   ) : (
-                    <p>{profile.phone}</p>
+                    <p className="break-words">{profile.phone}</p>
                   )}
+                </div>
+
+                {/* Blockchain Address */}
+                <p className="font-semibold">Blockchain Address:</p>
+                <div className="col-span-2 text-wrap">
+                  <p className="break-words">{profile.blockchain_address}</p>
+                </div>
+
+                {/* Public Key */}
+                <p className="font-semibold">Public Key:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.publickey}</p>
+                </div>
+                
+                {/* Private Key */}
+                <p className="font-semibold">Private Key:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.privatekey}</p>
+                </div>
+
+                {/* Role */}
+                <p className="font-semibold">Role:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.role}</p>
+                </div>
+
+                {/* DID */}
+                <p className="font-semibold">DID:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.did}</p>
+                </div>
+
+                {/* Is Passwordless */}
+                <p className="font-semibold">Passwordless:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.isPWLess ? "Yes" : "No"}</p>
+                </div>
+
+                {/* Is Online */}
+                <p className="font-semibold">Online Status:</p>
+                <div className="col-span-2">
+                  <p className="break-words">{profile.isOnline ? "Online" : "Offline"}</p>
                 </div>
               </div>
             </div>

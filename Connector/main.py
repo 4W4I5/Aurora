@@ -87,6 +87,44 @@ async def read_root():
 
 """
 ##############################################
+############### PROFILE ROUTES ###############
+##############################################
+"""
+
+
+@app.post("/api/profile/")
+async def get_user_profile(request: Request, session: SessionDep):
+    # Assume since the user is logged in, the token is valid
+    body = await request.json()
+    token = body.get("token")
+    print(f"token: {token}")
+
+    # Get the user from the database based on the token
+    with Session(engine) as session:
+        statement = select(User).where(User.access_token == token)
+        user = session.exec(statement).first()
+
+    # Load user profile into User Object
+    user = {
+        "username": user.username,
+        "email": user.email,
+        "phone": user.phone,
+        "public_key": user.public_key,
+        "private_key": user.private_key,
+        "blockchain_address": user.blockchain_address,
+        "did": user.did,
+        "role": user.role,
+        "isPWLess": user.isPWLess,
+        "isOnline": user.isOnline,
+    }
+
+    print(user)
+
+    return JSONResponse(status_code=200, content=user)
+
+
+"""
+##############################################
 ######## ADMIN DASHBOARD ROUTES ##############
 ##############################################
 """
@@ -142,10 +180,11 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+        print(f"[VRFY_TKN] TOKEN email: {email}")
+        if email is None:
             raise HTTPException(status_code=403, detail="Token is invalid or expired")
-        return payload
+        return email
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
@@ -156,7 +195,18 @@ async def verify_user_token(request: Request):
     print(f"[VRFY_TKN] Body: {body}")
     token = body.get("token")
     print(f"Verifying token: {token}")
-    verify_token(token=token)
+    email = verify_token(token=token)
+
+    # Set Token in the DB
+    with Session(engine) as session:
+        statement = select(User).where(User.email == email)
+        user = session.exec(statement).first()
+        user.access_token = token
+        user.isOnline = True
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
     return JSONResponse(status_code=200, content="Token is valid")
 
 

@@ -42,3 +42,18 @@ class VerifyRequest(BaseModel):
     address: str
     message: str
     signature: str
+
+
+class RegisterDID(BaseModel):
+    user: str
+    public_key: str
+
+
+class IssueVC(BaseModel):
+    holder: str
+    credential_hash: str
+
+
+class RevokeVC(BaseModel):
+    holder: str
+    credential_hash: str
