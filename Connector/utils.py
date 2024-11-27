@@ -1,21 +1,12 @@
 import base64
-import binascii
 import json
 import os
-from datetime import datetime, timedelta
-from time import timezone
-import jwt
+
 import web3
-from brownie import Contract
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from eth_account import Account
 from eth_keys import keys
 from eth_utils import decode_hex
-from fastapi.exceptions import HTTPException
-from fastapi.security import OAuth2PasswordBearer
 from web3 import Web3
 
 from model import User
@@ -162,6 +153,7 @@ def verify_signature(message: str, signature: str, address: str, w3Prov: Web3) -
 
 # Load the deployment information
 def getContract():
+    debug = False
     # Define the base directory (prefix path)
     base_dir = r"..\blockchain\ignition\deployments\chain-31337"
 
@@ -190,28 +182,33 @@ def getContract():
     print(f"  Contract Address: {contract_address}\n")
 
     # Loop through the ABI and print details for each function
-    for item in contract_abi:
-        # Only print function details, skip events
-        if item["type"] == "function":
-            print(f"Function Name: {item['name']}")
+    if debug:
+        for item in contract_abi:
+            # Only print function details, skip events
+            if item["type"] == "function":
+                print(f"Function Name: {item['name']}")
 
-            # Print function inputs
-            if item["inputs"]:
-                print("  Inputs:")
-                for input_param in item["inputs"]:
-                    print(f"    - Name: {input_param['name']}({input_param['type']})")
-            else:
-                print("  Inputs: None")
+                # Print function inputs
+                if item["inputs"]:
+                    print("  Inputs:")
+                    for input_param in item["inputs"]:
+                        print(
+                            f"    - Name: {input_param['name']}({input_param['type']})"
+                        )
+                else:
+                    print("  Inputs: None")
 
-            # Print function outputs
-            if item["outputs"]:
-                print("  Outputs:")
-                for output_param in item["outputs"]:
-                    print(f"    - Name: {output_param['name']}({output_param['type']})")
-            else:
-                print("  Outputs: None")
+                # Print function outputs
+                if item["outputs"]:
+                    print("  Outputs:")
+                    for output_param in item["outputs"]:
+                        print(
+                            f"    - Name: {output_param['name']}({output_param['type']})"
+                        )
+                else:
+                    print("  Outputs: None")
 
-            print("-" * 50)
+                print("-" * 50)
 
     # Return both the contract address and ABI for further use
     return contract_address, contract_abi
@@ -252,26 +249,3 @@ def get_accounts():
         accounts = json.load(file)
     return accounts
 
-
-# def create_access_token(
-#     data: dict,
-#     expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-# ):
-#     """
-#     Create an access token with the given data and expiry time.
-#     """
-#     to_encode = data.copy()
-#     expire = timezone.utc() + expires_delta
-#     to_encode.update({"exp": expire})
-#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-#     return encoded_jwt
-
-
-# def verify_access_token(token: str):
-#     try:
-#         # Decode the JWT token and validate the signature
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         print(f"Payload: {payload}")
-#         return payload
-#     except jwt.PyJWTError:
-#         raise HTTPException(status_code=401, detail="Invalid or expired token")

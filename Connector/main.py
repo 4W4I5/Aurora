@@ -1,46 +1,30 @@
-import base64
-import json
 import secrets
 from datetime import datetime, timedelta
 from typing import Annotated, Dict
 
-import bcrypt
 import fastapi
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Depends
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlmodel import Session, SQLModel, create_engine, select
-from web3 import Account, Web3, contract
+from web3 import Web3
 
-from model import (
-    ChallengeRequest,
-    LoginRequest,
-    SignRequest,
-    Token,
-    User,
-    VerifyRequest,
-)
+from model import SignRequest, Token, User, VerifyRequest
 from utils import (
     ALGORITHM,
     SECRET_KEY,
-    generate_private_key,
     generate_public_key,
     get_accounts,
     get_loaded_accounts,
     initialize_contract,
-    issue_vc,
     print_user,
     register_did,
-    sign_message,
     verify_signature,
 )
 
@@ -88,29 +72,6 @@ def get_session():
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
-
-
-# This function will decode the JWT token and fetch the current user
-# def get_current_user(
-#     token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)
-# ):
-#     payload = verify_access_token(token)  # Custom function to decode and validate JWT
-#     if payload is None:
-#         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-#     # The payload should include the user's email or user ID to fetch the user from the DB
-#     user_email = payload.get("sub")
-#     if not user_email:
-#         raise HTTPException(
-#             status_code=401, detail="Token does not contain user information"
-#         )
-
-#     # Retrieve user from the database by email
-#     user = session.exec(select(User).where(User.email == user_email)).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-
-#     return user
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -310,7 +271,7 @@ async def register_user(request: Request):
         with Session(engine) as session:
             users = session.exec(select(User)).all()
 
-        print(f"Users in DB: {users}")
+        # print(f"Users in DB: {users}")
 
         # Check if an address is free from the JSON accounts. if it is then assign it to the user along with its corresponding private key from the JSON accounts object
         print(f"Checking if any address is available")
@@ -345,7 +306,7 @@ async def register_user(request: Request):
 
         # Register the DID on the blockchain
         print(f"Registering DID on blockchain:")
-        did = f"did:key:{public_key[2:]}"
+        did = register_did(address, public_key)
         print(f"Registered DID: {did}")
 
         print(
@@ -362,7 +323,6 @@ async def register_user(request: Request):
             blockchain_address=address,
             role=role,
             did=did,
-            # access_token=create_access_token(data={"sub": email, "role": role}),
             isPWLess=isPWLess,
             isOnline=False,
         )
@@ -442,30 +402,6 @@ async def verify_login(verify_request: VerifyRequest):
 """
 
 
-# @app.post("/api/blockchain/registerDID")
-# async def register_did(address: str, public_key: str):
-#     try:
-#         tx = Contract.functions.registerDID(address, public_key).transact(
-#             {"from": address}
-#         )
-#         w3.eth.wait_for_transaction_receipt(tx)
-#         return {"success": True, "transaction": tx.hex()}
-#     except Exception as e:
-#         return HTTPException(status_code=400, detail=str(e))
-
-
-# @app.post("/api/blockchain/issueVC")
-# async def issue_vc(issuer: str, holder: str, credential_hash: str):
-#     try:
-#         tx = Contract.functions.issueVC(holder, credential_hash).transact(
-#             {"from": issuer}
-#         )
-#         w3.eth.wait_for_transaction_receipt(tx)
-#         return {"success": True, "transaction": tx.hex()}
-#     except Exception as e:
-#         return HTTPException(status_code=400, detail=str(e))
-
-
 @app.get("/contract-info")
 async def contract_info():
     contract = initialize_contract()
@@ -477,20 +413,6 @@ async def contract_info():
 ######### TEST UTIL FUNCTIONS ###############
 #############################################
 """
-
-
-# @app.get("/test/listSigners")
-# async def list_signers():
-#     contract = initialize_contract()
-#     signers = contract.functions.getSigners().call()
-#     return {"signers": signers}
-
-
-# # test new account gen
-# @app.get("/test/newAccount")
-# async def new_account():
-#     account = w3.eth.account.create()
-#     return {"address": account.address, "private_key": account._private_key.hex()}
 
 
 @app.get("/test/jsonaccounts")
