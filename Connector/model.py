@@ -9,12 +9,12 @@ class User(SQLModel, table=True):
     email: str
     phone: str
     password_hash: str
-    public_key: str
-    private_key: str
-    blockchain_address: str
+    public_key: str = Field(nullable=True)
+    private_key: str = Field(nullable=True)
+    blockchain_address: str = Field(nullable=True)
     role: str
-    did: str
-    access_token: str = None
+    did: str = Field(nullable=True)
+    access_token: str = Field(default=None, nullable=True)
     isPWLess: bool
     isOnline: bool
 

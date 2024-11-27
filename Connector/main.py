@@ -191,23 +191,27 @@ def verify_token(token: str = Depends(oauth2_scheme)):
 
 @app.post("/verify-token")
 async def verify_user_token(request: Request):
-    body = await request.json()
-    print(f"[VRFY_TKN] Body: {body}")
-    token = body.get("token")
-    print(f"Verifying token: {token}")
-    email = verify_token(token=token)
+    try:
+        body = await request.json()
+        print(f"[VRFY_TKN] Body: {body}")
+        token = body.get("token")
+        print(f"Verifying token: {token}")
+        email = verify_token(token=token)
 
-    # Set Token in the DB
-    with Session(engine) as session:
-        statement = select(User).where(User.email == email)
-        user = session.exec(statement).first()
-        user.access_token = token
-        user.isOnline = True
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+        # Set Token in the DB
+        with Session(engine) as session:
+            statement = select(User).where(User.email == email)
+            user = session.exec(statement).first()
+            user.access_token = token
+            user.isOnline = True
+            session.add(user)
+            session.commit()
+            session.refresh(user)
 
-    return JSONResponse(status_code=200, content="Token is valid")
+        return JSONResponse(status_code=200, content="Token is valid")
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=400, content="Error verifying token.")
 
 
 # Helper function to create the JWT token
@@ -356,7 +360,8 @@ async def register_user(request: Request):
 
         # Register the DID on the blockchain
         print(f"Registering DID on blockchain:")
-        did = register_did(address, public_key)
+        # did = register_did(address, public_key)
+        did = f"did:key:{public_key}"
         print(f"Registered DID: {did}")
 
         print(

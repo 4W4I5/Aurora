@@ -81,7 +81,7 @@ const LoginPage = ({ role }) => {
       // Check if the response status is 401 (Unauthorized)
       if (response.status === 401) {
         localStorage.removeItem("access_token"); // Clear the token if expired
-        navigate("/login"); // Redirect to login page
+        navigate("/"); // Redirect to login page
       }
     }
   };
