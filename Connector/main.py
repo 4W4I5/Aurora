@@ -197,6 +197,15 @@ async def verify_user_token(request: Request):
         token = body.get("token")
         print(f"Verifying token: {token}")
         email = verify_token(token=token)
+        # Set the rest of the users to offline
+        with Session(engine) as session:
+            statement = select(User).where(User.email != email)
+            users = session.exec(statement).all()
+            for user in users:
+                user.isOnline = False
+                session.add(user)
+                session.commit()
+                session.refresh(user)
 
         # Set Token in the DB
         with Session(engine) as session:
