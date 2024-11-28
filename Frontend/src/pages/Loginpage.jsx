@@ -131,7 +131,8 @@ const LoginPage = ({ role }) => {
       setStatus(data.authenticated ? "Login Successful!" : "Login Failed!");
 
       if (data.authenticated) {
-        navigate("/user/dashboard"); // Redirect to dashboard if authenticated
+        const role = localStorage.getItem("role");
+        navigate(`/${role}/dashboard`); // Redirect to dashboard if authenticated
       }
     } catch (error) {
       console.error("Error signing the challenge:", error);
@@ -174,6 +175,7 @@ const LoginPage = ({ role }) => {
       if (data["access_token"]) {
         // Assuming the server sends the JWT token in the response,
         localStorage.setItem("access_token", data["access_token"]);
+        localStorage.setItem("role", data["role"]);
         console.log("JWT Token:", localStorage.getItem("access_token")); // Log the JWT token
         navigate(`/${data["role"]}/dashboard`);
       } else {
