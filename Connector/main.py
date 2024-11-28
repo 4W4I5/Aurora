@@ -2,8 +2,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Annotated, Dict
 
-from eth_typing import HexStr
 import fastapi
+from eth_typing import HexStr
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Depends
@@ -28,8 +28,8 @@ from utils import (
     initialize_contract,
     print_user,
     register_did,
+    revoke_did,
     verify_signature,
-    revoke_did
 )
 
 # CORS Configuration
@@ -112,7 +112,10 @@ async def get_user_profile(request: Request, session: SessionDep):
     # Get the DID from the blockchain
     print(f"User Address: {user.blockchain_address}")
     did = "Couldnt find from Blockchain"
-    did = get_did(HexStr(user.blockchain_address))
+    if user.isPWLess:
+        did = get_did(HexStr(user.blockchain_address))
+    else:
+        did = "Passwordless not enabled"
     print(f"User DID: {did}")
 
     # Load user profile into User Object
@@ -120,13 +123,17 @@ async def get_user_profile(request: Request, session: SessionDep):
         "username": user.username,
         "email": user.email,
         "phone": user.phone,
-        "public_key": user.public_key,
-        "private_key": user.private_key,
-        "blockchain_address": user.blockchain_address,
-        "did": did,
+        "public_key": user.public_key if user.isPWLess else "Passwordless not enabled",
+        "private_key": (
+            user.private_key if user.isPWLess else "Passwordless not enabled"
+        ),
+        "blockchain_address": (
+            user.blockchain_address if user.isPWLess else "Passwordless not enabled"
+        ),
         "role": user.role,
         "isPWLess": user.isPWLess,
         "isOnline": user.isOnline,
+        "did": did if user.isPWLess else "Passwordless not enabled",
     }
 
     print(user)
@@ -212,10 +219,10 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
         # Generate the public key from the private key
         public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
 
-        # Register DID (just simulating here)
+        # Register DID
         did = f"did:key:{address[2:]}"
         print(f"Checking if DID exists: {did}")
-        try: 
+        try:
             get_did(address=HexStr(address))
         except ContractLogicError or ValueError as e:
             print(f"Error: {e}")
@@ -236,8 +243,6 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
         user.public_key = None
         user.private_key = None
         user.blockchain_address = None
-
-        
 
     # Add and commit the changes to the database
     session.add(user)

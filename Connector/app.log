@@ -1,0 +1,58 @@
+2024-11-28 11:24:27,938 - INFO - [VRFY_PW] Body: {'email': 'a@admin.com', 'password': 'a'}
+2024-11-28 11:24:27,964 - INFO - Authentication Result: {'authenticated': True, 'access_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4', 'role': 'admin'}
+2024-11-28 11:24:28,040 - INFO - [VRFY_TKN] Body: {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4'}
+2024-11-28 11:24:28,041 - INFO - Verifying token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4
+2024-11-28 11:24:28,043 - INFO - [VRFY_TKN] TOKEN email: a@admin.com
+2024-11-28 11:24:28,083 - INFO - [VRFY_TKN] Body: {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4'}
+2024-11-28 11:24:28,083 - INFO - Verifying token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4
+2024-11-28 11:24:28,084 - INFO - [VRFY_TKN] TOKEN email: a@admin.com
+2024-11-28 11:24:28,139 - INFO - 3 changes detected
+2024-11-28 11:24:47,985 - INFO - Got in Body:
+ Username: new USER
+ Email: c@admin.com
+ Phone: 123123
+ Role: admin
+ Password: a
+ isPWLess: False
+2024-11-28 11:24:48,092 - INFO - 3 changes detected
+2024-11-28 11:24:48,562 - INFO - [VRFY_TKN] Body: {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4'}
+2024-11-28 11:24:48,563 - INFO - Verifying token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4
+2024-11-28 11:24:48,564 - INFO - [VRFY_TKN] TOKEN email: a@admin.com
+2024-11-28 11:24:48,590 - INFO - [VRFY_TKN] Body: {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4'}
+2024-11-28 11:24:48,591 - INFO - Verifying token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhQGFkbWluLmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTczMjc3ODY2N30.GOot7FhHiQOpPQPx-O0vAiWTUaCN9ZOHcGRPqlv6t-4
+2024-11-28 11:24:48,591 - INFO - [VRFY_TKN] TOKEN email: a@admin.com
+2024-11-28 11:24:50,778 - INFO - 1 change detected
+2024-11-28 11:24:51,133 - INFO - 1 change detected
+2024-11-28 11:24:51,494 - INFO - 1 change detected
+2024-11-28 11:24:51,855 - INFO - 1 change detected
+2024-11-28 11:24:52,218 - INFO - 1 change detected
+2024-11-28 11:24:52,577 - INFO - 1 change detected
+2024-11-28 11:24:52,938 - INFO - 1 change detected
+2024-11-28 11:24:53,301 - INFO - 1 change detected
+2024-11-28 11:24:53,660 - INFO - 1 change detected
+2024-11-28 11:24:54,023 - INFO - 1 change detected
+2024-11-28 11:24:54,382 - INFO - 1 change detected
+2024-11-28 11:24:54,743 - INFO - 1 change detected
+2024-11-28 11:24:55,106 - INFO - 1 change detected
+2024-11-28 11:24:55,467 - INFO - 1 change detected
+2024-11-28 11:24:55,824 - INFO - 1 change detected
+2024-11-28 11:24:56,188 - INFO - 1 change detected
+2024-11-28 11:24:56,548 - INFO - 1 change detected
+2024-11-28 11:24:56,911 - INFO - 1 change detected
+2024-11-28 11:24:57,271 - INFO - 1 change detected
+2024-11-28 11:24:57,632 - INFO - 1 change detected
+2024-11-28 11:24:58,031 - INFO - 1 change detected
+2024-11-28 11:24:58,396 - INFO - 1 change detected
+2024-11-28 11:24:58,758 - INFO - 1 change detected
+2024-11-28 11:24:59,119 - INFO - 1 change detected
+2024-11-28 11:24:59,480 - INFO - 1 change detected
+2024-11-28 11:24:59,853 - INFO - 1 change detected
+2024-11-28 11:25:00,204 - INFO - 1 change detected
+2024-11-28 11:25:00,566 - INFO - 1 change detected
+2024-11-28 11:25:00,928 - INFO - 1 change detected
+2024-11-28 11:25:01,288 - INFO - 1 change detected
+2024-11-28 11:25:01,652 - INFO - 1 change detected
+2024-11-28 11:25:02,014 - INFO - 1 change detected
+2024-11-28 11:25:02,372 - INFO - 1 change detected
+2024-11-28 11:25:02,734 - INFO - 1 change detected
+2024-11-28 11:25:03,090 - INFO - 1 change detected
