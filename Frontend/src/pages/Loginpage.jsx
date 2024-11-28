@@ -1,4 +1,5 @@
 import { animated } from "@react-spring/web";
+import { ethers } from "ethers";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpg";
@@ -22,6 +23,7 @@ const LoginPage = ({ role }) => {
   const [sliding, setSliding] = useState(false);
   const [message, setMessage] = useState("");
   const [shapes, setShapes] = useState([]);
+  const [signedMessage, setSignedMessage] = useState(""); // To store the signed message
   const shapeCount = 100; // Define the number of shapes to generate
   const navigate = useNavigate();
 
@@ -33,6 +35,108 @@ const LoginPage = ({ role }) => {
       setStep(2);
       setSliding(false);
     }, 300);
+  };
+
+  // Request the challenge from the server
+  const requestChallenge = async () => {
+    setSignedMessage(""); // Clear the signed message when requesting a new challenge
+    setStatus(""); // Clear the status message
+    try {
+      // Get the JWT token from localStorage
+      const token = localStorage.getItem("access_token");
+      const addr = sessionStorage.getItem("blockchain_address");
+
+      if (!token) {
+        setStatus("No authentication token found.");
+        return;
+      }
+
+      if (!addr) {
+        setStatus("No blockchain address found.");
+        return;
+      }
+
+      // Construct the URL with query parameters
+      const url = new URL("http://127.0.0.1:8000/api/auth/PKI/challenge");
+      url.searchParams.append("address", addr); // Add blockchain address as a query parameter
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          contentType: "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMessage(data.message); // Set the received challenge message
+      } else {
+        setStatus("Failed to get challenge.");
+      }
+    } catch (error) {
+      console.error("Error fetching challenge:", error);
+      setStatus("Failed to get challenge.");
+    }
+  };
+
+  // Sign the received challenge message using the private key
+  const signChallenge = async () => {
+    if (!message) {
+      setStatus("Please fetch a challenge first!");
+      return;
+    }
+
+    try {
+      // Retrieve the private key from localStorage
+      const privateKey = sessionStorage.getItem("privatekey");
+      const blockchainAddress = sessionStorage.getItem("blockchain_address");
+
+      if (!privateKey || !blockchainAddress) {
+        setStatus("Private key or blockchain address not found!");
+        return;
+      }
+
+      // Create a Wallet instance using the private key from sessionStorage
+      const wallet = new ethers.Wallet(privateKey);
+
+      // Sign the message as is, no need to hash it again
+      const signature = await wallet.signMessage(message);
+
+      if (!signature) {
+        setStatus("Failed to sign the message.");
+        return;
+      }
+
+      // Set the signed message to display it on the UI
+      setSignedMessage(signature);
+
+      // Prepare the data to be sent to the server
+      const requestData = {
+        address: blockchainAddress, // Ensure the address is correctly retrieved
+        message: message, // Send the raw message, not hashed
+        signature: signature,
+      };
+      console.log("Request data:", requestData);
+
+      // Send the signed message to the backend for verification
+      const verifyRes = await fetch("http://127.0.0.1:8000/api/auth/PKI/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
+      });
+
+      const data = await verifyRes.json();
+      console.log("Verification response:", data);
+      setStatus(data.authenticated ? "Login Successful!" : "Login Failed!");
+
+      if (data.authenticated) {
+        navigate("/user/dashboard"); // Redirect to dashboard if authenticated
+      }
+    } catch (error) {
+      console.error("Error signing the challenge:", error);
+      setStatus("Failed to sign the challenge.");
+    }
   };
 
   const handleLogin = async (e) => {
@@ -83,63 +187,6 @@ const LoginPage = ({ role }) => {
         localStorage.removeItem("access_token"); // Clear the token if expired
         navigate("/"); // Redirect to login page
       }
-    }
-  };
-
-  const requestChallenge = async () => {
-    try {
-      // Get JWT token from localStorage
-      const token = localStorage.getItem("access_token");
-
-      const res = await fetch("http://127.0.0.1:8000/api/auth/challenge", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`, // Add token to header
-        },
-      });
-
-      const data = await res.json();
-      setMessage(data.message);
-    } catch (error) {
-      console.error("Error fetching challenge:", error);
-      setStatus("Failed to get challenge.");
-    }
-  };
-
-  const passwordlessLogin = async () => {
-    if (!message) {
-      setStatus("Fetch a challenge first!");
-      return;
-    }
-
-    try {
-      // Use connector server to handle signing
-      const res = await fetch("http://127.0.0.1:8000/api/auth/sign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
-      });
-
-      const signData = await res.json();
-      if (!signData.signature) {
-        setStatus("Failed to sign the message.");
-        return;
-      }
-
-      const verifyRes = await fetch("http://127.0.0.1:8000/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, signature: signData.signature }),
-      });
-
-      const data = await verifyRes.json();
-      setStatus(data.authenticated ? "Login Successful!" : "Login Failed!");
-      if (data.authenticated) {
-        navigate("/user/dashboard");
-      }
-    } catch (error) {
-      console.error("Error during login:", error);
-      setStatus("Login failed.");
     }
   };
 
@@ -222,7 +269,10 @@ const LoginPage = ({ role }) => {
           AURORA
         </h2>
         <h3 className="text-center text-xl mb-6 text-supabase-neutral">
-          Welcome Back!
+          Welcome Back! <br />
+          {sessionStorage.getItem("blockchain_address")
+            ? "You can now use blockchain to login."
+            : ""}
         </h3>
 
         <div
@@ -293,22 +343,41 @@ const LoginPage = ({ role }) => {
             </>
           ) : (
             <>
+              {/* Blockchain login flow */}
               <div className="mb-4">
                 <button
                   onClick={requestChallenge}
                   className="btn bg-supabase.primary hover:bg-supabase.secondary w-full text-supabase-neutral"
                 >
-                  Request Challenge
+                  Step 1: Request Challenge
                 </button>
               </div>
+
+              {/* Show the challenge message */}
+              {message && (
+                <div className="mt-4 text-supabase-neutral">
+                  <p>Challenge Message:</p>
+                  <p className="text-sm">{message}</p>
+                </div>
+              )}
+
               <div className="mb-4">
                 <button
-                  onClick={handleNextStep}
+                  onClick={signChallenge}
                   className="btn bg-supabase.primary hover:bg-supabase.secondary w-full text-supabase-neutral"
                 >
-                  Login with Blockchain
+                  Step 2: Sign Challenge
                 </button>
               </div>
+
+              {/* Show the signed message */}
+              {signedMessage && (
+                <div className="mt-4 text-supabase-neutral">
+                  <p>Signed Message:</p>
+                  <p className="text-sm">{signedMessage}</p>
+                </div>
+              )}
+
               <p className="text-center text-sm text-supabase.grayDark">
                 {status}
               </p>

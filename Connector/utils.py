@@ -68,6 +68,41 @@ def verify_signature(message: str, signature: str, address: str, w3: Web3) -> bo
         return False
 
 
+
+
+def generate_challenge():
+    # Generate a random challenge (nonce)
+    challenge = os.urandom(32)  # 32 bytes random
+    return challenge.hex()  # Return as a hexadecimal string
+
+
+def verify_challenge(user_address, challenge, signed_challenge):
+    # Recompute the challenge hash
+    challenge_hash = w3.solidityKeccak(["string"], [challenge])
+
+    # Recover the address from the signed challenge
+    recovered_address = w3.eth.account.recoverHash(
+        challenge_hash, signature=signed_challenge
+    )
+
+    # Verify that the recovered address matches the user's address (DID owner)
+    if recovered_address.lower() == user_address.lower():
+        print("Authentication successful!")
+        return True
+    else:
+        print("Authentication failed!")
+        return False
+
+
+def sign_challenge(challenge, private_key):
+    # Hash the challenge
+    challenge_hash = w3.solidityKeccak(["string"], [challenge])
+
+    # Sign the challenge hash with the user's private key
+    signed_message = w3.eth.account.signHash(challenge_hash, private_key)
+    return signed_message.signature.hex()  # Return signed message (hex format)
+
+
 def sign_message(message: str, private_key: str):
     """
     Signs a message with the provided private key.

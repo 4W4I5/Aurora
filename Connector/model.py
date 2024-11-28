@@ -21,7 +21,7 @@ class User(SQLModel, table=True):
 
 class LoginRequest(BaseModel):
     username: str
-    password: str
+    password: str  # This field is still required for password-based users
 
 
 class Token(BaseModel):
@@ -30,18 +30,20 @@ class Token(BaseModel):
 
 
 class ChallengeRequest(BaseModel):
-    address: str
+    address: str  # Ethereum address for the challenge
 
 
+# SignRequest schema
 class SignRequest(BaseModel):
     address: str
     message: str
+    signature: str
 
 
 class VerifyRequest(BaseModel):
-    address: str
-    message: str
-    signature: str
+    address: str  # Ethereum address
+    message: str  # Message to be verified
+    signature: str  # Signed message
 
 
 class RegisterDID(BaseModel):

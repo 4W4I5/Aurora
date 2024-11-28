@@ -156,108 +156,6 @@ async def delete_user(user_id: int, session: SessionDep):
     return {"success": True}
 
 
-# @app.put("/api/users/{user_id}")
-# async def update_user(user_id: int, user_data: dict, session: SessionDep):
-#     """
-#     Update a user's information based on the user_id and the new data provided in the request body.
-#     """
-#     user = session.get(User, user_id)
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-
-#     # Compare what is being changed and print the differences only
-#     print(f"Updating user ({user.email})")
-#     print(f"Changes:")
-#     with Session(engine) as session:
-#         statement = select(User).where(User.id == user_id)
-#         user = session.exec(statement).first()
-
-#         # Update the user object with the new data
-#         for key, value in user_data.items():
-#             if hasattr(user, key):  # Only update valid attributes of the model
-#                 setattr(user, key, value)
-#             if hasattr(user, key) and getattr(user, key) != value:
-#                 print(f"  {key}: {getattr(user, key)} -> {value}")
-
-#     # Generate keys if isPWLess is set to True
-#     if user.isPWLess:
-#         # Get all users from DB
-#         with Session(engine) as session:
-#             all_users = session.exec(select(User)).all()
-
-#         # Print all all_users with counter but use print_user
-#         for i, user in enumerate(all_users):
-#             print(f"User {i + 1}:")
-#             print_user(user)
-
-#         # Pick an account from the JSON of available accounts, make sure it isnt already in use in the db then assign the address and priviate key
-#         accounts = get_accounts()
-
-#         # print(f"JSON Accounts: {accounts}")
-
-#         # Get all users from DB
-#         with Session(engine) as session:
-#             users = session.exec(select(User)).all()
-
-#         # print(f"Users in DB: {users}")
-
-#         # Check if an address is free from the JSON accounts. if it is then assign it to the user along with its corresponding private key from the JSON accounts object
-#         print(f"Checking if any address is available")
-
-#         address = None
-#         private_key = None
-
-#         # Ensure that users is a list of dictionaries and each user has a 'blockchain_address' key
-#         for account in accounts:
-#             # Use correct key for accessing the account address
-#             if account["account"] not in [user.blockchain_address for user in users]:
-#                 address = account["account"]
-#                 private_key = account["privateKey"]
-#                 break
-
-#         # Optional: if no address was found, you can check if the address and private_key were set
-#         if address and private_key:
-#             print(f"Found available address: {address}")
-#         else:
-#             print("No available address found.")
-
-#         print(f"Address: {address}\n Private Key: {private_key}")
-
-#         # If no address is found, return error
-#         if not address:
-#             return {"success": False, "error": "No available accounts."}
-
-#         # Generate a public key from the private key
-#         print(f"Generating Public Key:")
-#         public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
-#         print(f"Public Key: {public_key}")
-
-#         # Register the DID on the blockchain
-#         print(f"Registering DID on blockchain:")
-#         # did = register_did(address, public_key)
-#         did = f"did:key:{public_key}"
-#         print(f"Registered DID: {did}")
-
-#         print(
-#             f"SUCCESS! Generated: \n Account: {address}\n Private Key: {private_key}\n Public Key: {public_key}\n DID: {did}"
-#         )
-#         user.blockchain_address = address
-#         user.private_key = private_key
-#         user.public_key = public_key
-
-#         print_user(user)
-
-#     elif not user.isPWLess:
-#         user.public_key = None
-#         user.private_key = None
-#         user.blockchain_address = None
-
-#     session.add(user)
-#     session.commit()
-#     session.refresh(user)
-#     return {"success": True, "user": user}
-
-
 @app.put("/api/users/{user_id}")
 async def update_user(user_id: int, user_data: dict, session: SessionDep):
     """
@@ -374,9 +272,6 @@ async def verify_user_token(request: Request):
             user = session.exec(statement).first()
             user.access_token = token
             user.isOnline = True
-            # if valid user has either publickey, privatekey or blockchain address. set isPWless to true
-            # if user.public_key or user.private_key or user.blockchain_address:
-            # user.isPWLess = True
             session.add(user)
             session.commit()
             session.refresh(user)
@@ -494,11 +389,7 @@ async def register_user(request: Request):
             email=email,
             phone=phoneNumber,
             password_hash=password,
-            # public_key=public_key,
-            # private_key=private_key,
-            # blockchain_address=address,
             role=role,
-            # did=did,
             isPWLess=False,  # Only enable passwordless when user triggers it
             isOnline=False,
         )
@@ -528,98 +419,74 @@ async def register_user(request: Request):
 
 @app.get("/api/auth/PKI/challenge")
 async def get_challenge(address: str):
-    if not Web3.isAddress(address):
-        return HTTPException(status_code=400, detail="Invalid Ethereum address.")
+    if not w3.is_address(address):
+        raise HTTPException(status_code=400, detail="Invalid Ethereum address.")
 
-    challenge = secrets.token_hex(16)
+    # Generate a random challenge for the user
+    challenge = secrets.token_hex(32)
     challenges[address] = challenge
+    print(f"Generated challenge for {address}: {challenge}")
     return {"message": challenge}
 
 
+from web3 import Web3
+
+
+# Helper function to verify the signature (updated to work with message hash and Ethereum prefix)
+def verify_signature(message: str, signature: str, address: str, web3: Web3) -> bool:
+    try:
+        # Ensure the message is a hex string, if not, raise an error
+        if message.startswith("0x"):
+            message_bytes = bytes.fromhex(
+                message[2:]
+            )  # Convert from hex to bytes (ignore '0x')
+        else:
+            # If it's a string message, encode it as bytes
+            message_bytes = message.encode("utf-8")
+
+        # Step 1: Hash the message
+        message_hash = web3.solidity_keccak(
+            ["bytes"], [message_bytes]
+        )  # keccak256 of the message
+
+        # Step 2: Prefix the message hash with the Ethereum message prefix
+        prefix = f"\x19Ethereum Signed Message:\n{len(message)}".encode("utf-8")
+        prefixed_hash = web3.solidity_keccak(
+            ["bytes", "bytes"], [prefix, message_bytes]
+        )
+
+        # Step 3: Recover the address from the signature
+        recovered_address = web3.eth.account._recover_hash(
+            prefixed_hash, signature=signature
+        )
+
+        # Step 4: Compare the recovered address with the provided address
+        return recovered_address.lower() == address.lower()
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+
 @app.post("/api/auth/PKI/sign")
-async def sign_message(sign_request: SignRequest):
-    address = sign_request.address
-    message = challenges.get(address)
+async def sign_message(request: Request):
+    body = await request.json()
+    address = body.get("address")
+    message = body.get("message")
+    originalMessage = challenges.get(address)  # This is the original challenge message
+    signature = body.get("signature")
 
-    if not message or message != sign_request.message:
-        return HTTPException(status_code=400, detail="Invalid challenge or address.")
+    print(f"Original Message: {originalMessage} {type(originalMessage)}")
+    print(f"Message:          {message} {type(message)}")
+    print(f"Message Length: {len(message)}")
+    print(f"Signature: {signature}")
 
-    return {"signature": "This would normally be handled by the user's wallet."}
+    if not message or message != originalMessage:
+        raise HTTPException(status_code=400, detail="Invalid challenge or address.")
 
-
-@app.post("/api/auth/PKI/verify")
-async def verify_login(verify_request: VerifyRequest):
-    address = verify_request.address
-    signature = verify_request.signature
-    message = verify_request.message
-
-    if not Web3.isAddress(address):
-        return HTTPException(status_code=400, detail="Invalid Ethereum address.")
-
+    # Verify the signature using the message hash with Ethereum prefix
     is_valid = verify_signature(message, signature, address, w3)
 
     if not is_valid:
-        return {"success": False, "error": "Invalid signature."}
+        raise HTTPException(status_code=400, detail="Invalid signature.")
 
-    with Session(engine) as session:
-        statement = select(User).where(User.did == address)
-        user = session.exec(statement).first()
-
-    if not user:
-        return {"success": False, "error": "User not found."}
-
-    return {"success": True, "role": "user"}
-
-
-"""
-#############################################
-######## CONTRACT INTERACTION ROUTES ########
-#############################################
-"""
-
-
-@app.get("/contract-info")
-async def contract_info():
-    contract = initialize_contract()
-    return {"contract_address": contract.address, "contract_abi": contract.abi}
-
-
-"""
-#############################################
-######### TEST UTIL FUNCTIONS ###############
-#############################################
-"""
-
-
-@app.get("/test/jsonaccounts")
-async def json_accounts():
-    accounts = get_accounts()
-    return {"accounts": accounts}
-
-
-@app.get("/test/loadedaccounts")
-async def loaded_accounts():
-    accounts = get_loaded_accounts()
-    return {"accounts": accounts}
-
-
-# # Test register_did
-# @app.get("/test/registerdid")
-# async def test_register_did():
-#     address = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
-#     private_key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
-#     public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
-#     print(f"Registering DID on blockchain:")
-#     print(f"Address: {address}\n Public Key: {public_key}\n Private Key: {private_key}")
-
-#     try:
-#         print(f"DID GOT: {get_did(address)}")
-#     except ContractLogicError as e:
-#         print(e)
-#         register_did(address, hex(f"did:key:{public_key[2:]})"))
-#         return {"success": False, "error": "Error registering DID.", "message": str(e)}
-#     except ValueError as e:
-#         print(e, "Raise Gas")
-
-#     did = "ahha"
-#     return {"success": True, "did": did}
+    return {"authenticated": True, "message": "Signature is valid, user authenticated."}

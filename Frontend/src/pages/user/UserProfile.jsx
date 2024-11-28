@@ -59,10 +59,10 @@ const UserProfile = () => {
 
   // Function to save blockchain keys to localStorage
   const saveBlockchainKeysToLocalStorage = () => {
-    localStorage.setItem("blockchain_address", profile.blockchain_address);
-    localStorage.setItem("publickey", profile.publickey);
-    localStorage.setItem("privatekey", profile.privatekey);
-    alert("Blockchain keys saved to localStorage!");
+    sessionStorage.setItem("blockchain_address", profile.blockchain_address);
+    sessionStorage.setItem("publickey", profile.publickey);
+    sessionStorage.setItem("privatekey", profile.privatekey);
+    alert("Blockchain keys saved to sessionStorage!");
   };
 
   return (
