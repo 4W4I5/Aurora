@@ -29,6 +29,7 @@ from utils import (
     print_user,
     register_did,
     verify_signature,
+    revoke_did
 )
 
 # CORS Configuration
@@ -213,8 +214,13 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
 
         # Register DID (just simulating here)
         did = f"did:key:{address[2:]}"
-        print(f"Registering DID: {did}")
-        register_did(address=address, did=did)
+        print(f"Checking if DID exists: {did}")
+        try: 
+            get_did(address=HexStr(address))
+        except ContractLogicError or ValueError as e:
+            print(f"Error: {e}")
+            print(f"Registering DID: {did}")
+            register_did(address=address, did=did)
         # Update user blockchain-related fields
         user.did = did
         user.blockchain_address = address
@@ -230,6 +236,8 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
         user.public_key = None
         user.private_key = None
         user.blockchain_address = None
+
+        
 
     # Add and commit the changes to the database
     session.add(user)

@@ -43,6 +43,12 @@ contract DIDRegistry {
         return dids[user];
     }
 
+    // Revoke a user's DID
+    function revokeDID(address user) public {
+        require(bytes(dids[user]).length > 0, "DID not found");
+        delete dids[user];
+    }
+
     // Issue a Verifiable Credential (VC)
     function issueVC(address holder, string calldata credentialHash) public {
         require(

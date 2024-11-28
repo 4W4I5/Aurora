@@ -17,6 +17,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Token expiry time
 # Web3 setup
 w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))  # Adjust the provider as needed
 
+def revoke_did(address: str):
+    """
+    Revoke a DID on the blockchain with the given address.
+    """
+    contract = initialize_contract()
+    tx = contract.functions.revokeDID(address).transact({"from": address})
+    receipt = w3.eth.wait_for_transaction_receipt(tx)
+    return receipt
 
 def register_did(address: str, did: str):
     """
