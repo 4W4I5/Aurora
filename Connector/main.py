@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Annotated, Dict
 
+from eth_typing import HexStr
 import fastapi
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,6 +107,13 @@ async def get_user_profile(request: Request, session: SessionDep):
         statement = select(User).where(User.access_token == token)
         user = session.exec(statement).first()
 
+    print(f"IN USER PROFILE")
+    # Get the DID from the blockchain
+    print(f"User Address: {user.blockchain_address}")
+    did = "Couldnt find from Blockchain"
+    did = get_did(HexStr(user.blockchain_address))
+    print(f"User DID: {did}")
+
     # Load user profile into User Object
     user = {
         "username": user.username,
@@ -114,7 +122,7 @@ async def get_user_profile(request: Request, session: SessionDep):
         "public_key": user.public_key,
         "private_key": user.private_key,
         "blockchain_address": user.blockchain_address,
-        "did": user.did,
+        "did": did,
         "role": user.role,
         "isPWLess": user.isPWLess,
         "isOnline": user.isOnline,
@@ -204,9 +212,11 @@ async def update_user(user_id: int, user_data: dict, session: SessionDep):
         public_key = generate_public_key(private_key, isBase64=False, isPEM=False)
 
         # Register DID (just simulating here)
-        did = f"did:key:{public_key}"
-
+        did = f"did:key:{address[2:]}"
+        print(f"Registering DID: {did}")
+        register_did(address=address, did=did)
         # Update user blockchain-related fields
+        user.did = did
         user.blockchain_address = address
         user.private_key = private_key
         user.public_key = public_key
@@ -427,9 +437,6 @@ async def get_challenge(address: str):
     challenges[address] = challenge
     print(f"Generated challenge for {address}: {challenge}")
     return {"message": challenge}
-
-
-from web3 import Web3
 
 
 # Helper function to verify the signature (updated to work with message hash and Ethereum prefix)

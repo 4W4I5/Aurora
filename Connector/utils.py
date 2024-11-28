@@ -30,12 +30,19 @@ def register_did(address: str, did: str):
 
 def get_did(address: str):
     """
-    Get the DID for a given address.
+    Get the DID for a given address from the contract.
     """
-    contract = initialize_contract()
-    tx = contract.functions.getDID(address).call()
-    receipt = w3.eth.wait_for_transaction_receipt(tx)
-    return receipt
+    contract = initialize_contract()  # Ensure your contract is initialized
+    print(f"[GET_DID] Address: {address}")
+
+    # Directly call the `getDID` function, no need for tx receipt
+    did = contract.functions.getDID(address).call()
+
+    # Print or log the DID for debugging
+    print(f"[GET_DID] Retrieved DID from blockchain: {did}")
+
+    # Return the DID string (it should already be in the correct format)
+    return did
 
 
 def issue_vc(issuer: str, holder: str, credential_hash: str):
@@ -66,8 +73,6 @@ def verify_signature(message: str, signature: str, address: str, w3: Web3) -> bo
     except Exception as e:
         print(f"Error in verifying signature: {e}")
         return False
-
-
 
 
 def generate_challenge():

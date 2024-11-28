@@ -39,15 +39,16 @@ contract DIDRegistry {
     // Get a user's DID
     function getDID(address user) public view returns (string memory) {
         require(bytes(dids[user]).length > 0, "DID not found");
+        // return hex string of DID
         return dids[user];
     }
 
     // Issue a Verifiable Credential (VC)
-    function issueVC(
-        address holder,
-        string calldata credentialHash
-    ) public {
-        require(bytes(dids[msg.sender]).length > 0, "Issuer DID not registered");
+    function issueVC(address holder, string calldata credentialHash) public {
+        require(
+            bytes(dids[msg.sender]).length > 0,
+            "Issuer DID not registered"
+        );
         require(bytes(dids[holder]).length > 0, "Holder DID not registered");
 
         holderVCs[holder].push(
@@ -62,11 +63,11 @@ contract DIDRegistry {
     }
 
     // Revoke a Verifiable Credential (VC)
-    function revokeVC(
-        address holder,
-        string calldata credentialHash
-    ) public {
-        require(bytes(dids[msg.sender]).length > 0, "Issuer DID not registered");
+    function revokeVC(address holder, string calldata credentialHash) public {
+        require(
+            bytes(dids[msg.sender]).length > 0,
+            "Issuer DID not registered"
+        );
 
         VerifiableCredential[] storage credentials = holderVCs[holder];
         bool found = false;
@@ -104,14 +105,5 @@ contract DIDRegistry {
             }
         }
         return false;
-    }
-
-
-    // Return all signers
-    function getSigners() public view returns (address[] memory) {
-        address[] memory signers = new address[](2);
-        signers[0] = msg.sender;
-        signers[1] = address(this);
-        return signers;
     }
 }
